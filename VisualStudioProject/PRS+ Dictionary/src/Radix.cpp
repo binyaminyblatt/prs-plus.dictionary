@@ -7,6 +7,8 @@
 #else
 #include "stdint.h"
 #endif 
+#include "unicode.h"
+
 
 #define ERR_FILE_NOT_FOUND -1
 #define ERR_INTERNAL_ERROR -2
@@ -29,13 +31,13 @@ struct Header {
 };
 
 struct Node {
-	uint16_t len;
-	uint32_t value;
-	uint8_t nchildren;
-	uint32_t pchildren[1024];
-	uint8_t children_names [64*1024];
+	uint16_t len; // length of the structure
+	uint32_t value; // pointer to the article (offset in file)
+	uint8_t nchildren; // number of child nodes
+	uint32_t pchildren[1024]; // pointers to child nodes (offset in file)
+	uint16_t children_names [64*1024]; // zero terminated UTF-16 names
 };
-int size_of_node = sizeof(Node) - sizeof(uint32_t[1024]) - sizeof(uint8_t[64*1024]);
+int size_of_node = sizeof(Node) - sizeof(uint32_t[1024]) - sizeof(uint16_t[64*1024]);
 int size_of_pchildren = sizeof(uint32_t[1024]);
 
 void print_usage() {
@@ -84,11 +86,12 @@ void read_node(Node& node) {
 /**
 * Finds matching node in the list referenced by <node>. Returns -1 if no matching node were found.
 */
-int find_match(Node node, uint8_t* search_str, int str_len, int& matched_count) {
-	uint8_t* pchildren = &(node.children_names[0]);
+int find_match(Node node, uint16_t* search_str, int str_len, int& matched_count) {
+	uint16_t* pchildren = &(node.children_names[0]);
 	for (int i = 0, n = node.nchildren; i < n; i++) {
 		// Compare
 		int j;
+
 		bool mismatch = false;
 		for (j = 0; j < str_len; j++) {
 			// Reached end of string
@@ -124,13 +127,28 @@ int main(int argc, char* argv[])
 
 	char* filename = (char*) argv[1];
 	// TODO unescape input string
-	uint8_t* search = (uint8_t*) argv[2];
+	uint8_t* searchUTF8 = (uint8_t*) argv[2];
+
 	int search_len = 0;
-	while(search[search_len] != 0) {
+	while(searchUTF8[search_len] != 0) {
 		search_len++;
 	}
 
-	printf("dict filename is '%s' search string is '%s' search string length is '%d'\n", filename, search, search_len);
+	uint16_t* searchUTF16 = (uint16_t*) malloc((search_len + 1)*2);
+	uint8_t* searchUTF8End = searchUTF8;
+	uint16_t* searchUTF16End = searchUTF16;
+
+	ConversionResult res = ConvertUTF8toUTF16((const UTF8**) &searchUTF8End, (const UTF8*) (searchUTF8 + search_len), (UTF16**) &searchUTF16End, (UTF16*) (searchUTF16 + search_len*2 /* TODO need *2 multiplier? */), lenientConversion);
+//	ConversionResult res = ConvertUTF16toUTF8((const UTF16**) &name,(const UTF16*) (name + len), (UTF8**) &pbuf0, (UTF8*) pbuf0 + utf8Len, lenientConversion);
+	if (res != conversionOK) {
+		printf("Failed to convert input to UTF8");
+		return -1;
+	}
+	search_len = (int) (searchUTF16End - searchUTF16);
+	// Set trailing zero
+	searchUTF16[search_len] = 0;
+	
+	printf("dict filename is '%s' search string is '%s' search string length is '%d'\n", filename, searchUTF8, search_len);
 	// Open dictionary file
 	f = fopen(filename, "rb");
 	if (!f) {
@@ -156,10 +174,10 @@ int main(int argc, char* argv[])
 	read_node(node);
 
 	int n_disk_accesses = 1;
-	int nfound = 0;
+ 	int nfound = 0;
 	while (nfound < search_len) {
 		int ncount;
-		int result = find_match(node, search + nfound, search_len - nfound, ncount);
+		int result = find_match(node, searchUTF16 + nfound, search_len - nfound, ncount);
 		if (result < 0) {
 			break;
 		}
@@ -185,7 +203,7 @@ int main(int argc, char* argv[])
 		printf("Article is:\n%s", buf);
 		free(buf);
 	} else {
-		printf("String '%s' wasn't found\n", search);
+		printf("String '%s' wasn't found\n", searchUTF16);
 	}
 
 	

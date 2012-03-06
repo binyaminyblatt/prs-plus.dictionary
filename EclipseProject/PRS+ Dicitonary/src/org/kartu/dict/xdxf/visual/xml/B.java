@@ -1,10 +1,15 @@
-package org.kartu.dict.xdxf.xml;
+package org.kartu.dict.xdxf.visual.xml;
 
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlValue;
 
-@XmlRootElement (name="i")
-public class I {
+/**
+ * Corresponds to "b" tag (bold) in xdxf visual format
+ * 
+ * @author kartu
+ */
+@XmlRootElement (name="b")
+public class B {
 	@XmlValue
 	public String value;
 	

@@ -2,6 +2,7 @@ package org.kartu.dict;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,8 +11,22 @@ import org.kartu.IOUtils;
 import ds.tree.RadixTreeImpl;
 import ds.tree.RadixTreeNode;
 
+/**
+ * Class that can create prsp dictionary files from Radix trees
+ * 
+ * @author kartu
+ */
 public class RadixSerializer {
-	private static final String ENCODING = "UTF8";
+	// UTF16 is used for key encoding, to simplify case/accent insensitive lookup
+	// UTF8 adds var-length complexity
+	// The fact that UTF-16 is formally var-length is ignored.
+	private static final RadixSerializer instance = new RadixSerializer();
+	// End of string marker, 2 zero bytes
+	private static final byte[] EOSTR = new byte[2];
+	
+	public static RadixSerializer getInstance() {
+		return instance;
+	}
 
 	public static void main(String[] args) throws IOException {
 		RandomAccessFile raf = new RandomAccessFile("radix.dat", "rw");
@@ -20,14 +35,14 @@ public class RadixSerializer {
 		radixTree.insert("one", 1);
 		radixTree.insert("on", 2);
 		radixTree.insert("once", 3);
-		persistRadix(0, radixTree.root, raf); 
+		getInstance().persistRadix(Charset.forName("UTF-16LE"), 0, radixTree.root, raf); 
 		raf.close();
 	}
 	
-	public static final int persistRadix(int offset, RadixTreeNode<Integer> node, RandomAccessFile out) throws IOException {
+	public final int persistRadix(Charset charset, int offset, RadixTreeNode<Integer> node, RandomAccessFile out) throws IOException {
 		// size of the block (short)
 		// value (VALUE_SIZE), 0 if not real
-		// num of children (byte)
+		// num of children (byte) FIXME for Chinese might need to change to short
 		// *children
 		// children names
 		
@@ -54,10 +69,10 @@ public class RadixSerializer {
 
 		// children names (heading length)
 		for (RadixTreeNode<Integer> child : node.childern) {
-			byte[] buf = child.key.getBytes(ENCODING);
+			byte[] buf = child.key.getBytes(charset);
 			out.write(buf);
-			out.write(0);
-			size += buf.length + 1;
+			out.write(EOSTR);
+			size += buf.length + EOSTR.length;
 		}
 		
 		// fill children pointers
@@ -65,7 +80,7 @@ public class RadixSerializer {
 		List<Integer> childrenOffsets = new ArrayList<Integer>(node.childern.size());
 		for (RadixTreeNode<Integer> child : node.childern) {
 			childrenOffsets.add(offset);
-			offset = persistRadix(offset, child, out);
+			offset = persistRadix(charset, offset, child, out);
 		}
 		
 		// Write size of the block

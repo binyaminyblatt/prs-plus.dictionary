@@ -1,4 +1,4 @@
-package org.kartu.dict.xdxf.xml;
+package org.kartu.dict.xdxf.visual.xml;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -15,6 +15,11 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
+/**
+ * Corresponds to "ar" tag (article) in xdxf visual format
+ * 
+ * @author kartu
+ */
 @XmlRootElement (name="ar")
 public class AR {
 	@XmlAnyElement (lax=true) @XmlMixed

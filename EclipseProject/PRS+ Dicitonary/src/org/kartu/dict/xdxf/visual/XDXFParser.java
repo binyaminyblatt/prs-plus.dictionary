@@ -1,4 +1,4 @@
-package org.kartu.dict;
+package org.kartu.dict.xdxf.visual;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -7,8 +7,18 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
-import org.kartu.dict.xdxf.xml.AR;
+import org.kartu.dict.DictionaryParserException;
+import org.kartu.dict.IDictionaryArticle;
+import org.kartu.dict.IDictionaryParser;
+import org.kartu.dict.xdxf.visual.xml.AR;
 
+/**
+ * Serial dictionary parser of XDXF visual format.
+ * 
+ * @author kartu
+ * 
+ * @see IDictionaryParser
+ */
 public class XDXFParser implements IDictionaryParser, IDictionaryArticle {
 	private XMLStreamReader xmlStreamReader;
 	private FileInputStream fin;
@@ -31,6 +41,7 @@ public class XDXFParser implements IDictionaryParser, IDictionaryArticle {
 	@Override
 	public IDictionaryArticle getNext() throws DictionaryParserException {
 		try {
+			// Read article by article, ignoring other tags
 			while (this.xmlStreamReader.hasNext()) {
 				this.xmlStreamReader.next();
 				if (this.xmlStreamReader.isStartElement()) {

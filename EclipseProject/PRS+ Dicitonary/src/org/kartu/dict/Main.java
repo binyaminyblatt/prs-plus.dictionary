@@ -6,6 +6,7 @@ import java.nio.charset.Charset;
 
 import org.apache.log4j.Logger;
 import org.kartu.IOUtils;
+import org.kartu.dict.xdxf.visual.XDXFParser;
 
 import ds.tree.DuplicateKeyException;
 import ds.tree.RadixTreeImpl;
@@ -15,9 +16,10 @@ public class Main {
 	
 	public static void main(String[] args) throws IOException, DictionaryParserException {
 		int HEADER_SIZE = 1024;
+		Charset KEY_CHARSET = Charset.forName("UTF-16LE");
 		Charset CHARSET = Charset.forName("UTF-8");
-		String inputFileName = "eng-rus.xdxf";
-		String outputFileName = "eng-rus.prspdict";
+		String inputFileName = "mini.xdxf";
+		String outputFileName = "mini.prspdict";
 
 		// Write header (zeros)
 		RandomAccessFile raf = new RandomAccessFile(outputFileName, "rw");
@@ -66,7 +68,7 @@ public class Main {
 		
 		// Write index
 		log.info("Writing indices");
-		RadixSerializer.persistRadix(offset, tree.root, raf);
+		RadixSerializer.getInstance().persistRadix(KEY_CHARSET, offset, tree.root, raf);
 		raf.close();
 		
 		log.info("OK");

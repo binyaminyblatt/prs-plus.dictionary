@@ -2,6 +2,11 @@ package org.kartu.dict;
 
 import java.io.IOException;
 
+/**
+ * Generic dictionary serial parser. 
+ * 
+ * @author kartu
+ */
 public interface IDictionaryParser {
 	/**
 	 * Opens XDXF dictionary file for reading
