@@ -1,6 +1,9 @@
 // Radix.cpp 
 
+// For Microsoft compiler not warn about deprecated functions (Microsoft's alternative isn't portable)
+#define _CRT_SECURE_NO_DEPRECATE
 #include <stdio.h>
+
 #include <stdlib.h>
 #ifndef _MSC_VER
 #include <stdint.h>
@@ -8,7 +11,6 @@
 #include "stdint.h"
 #endif 
 #include "unicode.h"
-
 
 #define ERR_FILE_NOT_FOUND -1
 #define ERR_INTERNAL_ERROR -2
@@ -41,7 +43,7 @@ int size_of_node = sizeof(Node) - sizeof(uint32_t[1024]) - sizeof(uint16_t[64*10
 int size_of_pchildren = sizeof(uint32_t[1024]);
 
 void print_usage() {
-	printf("Usage:\n<program> <prspdic file> <search string>");
+	printf("Usage:\n\t<program> <prspdic file> <search string>");
 }
 
 

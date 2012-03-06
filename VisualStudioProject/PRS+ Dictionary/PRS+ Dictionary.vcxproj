@@ -75,9 +75,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Radix.cpp" />
+    <ClCompile Include="src\unicode.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\stdint.h" />
+    <ClInclude Include="src\unicode.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
