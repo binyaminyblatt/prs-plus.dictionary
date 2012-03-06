@@ -1,0 +1,11 @@
+syntax:glob
+Mics/*
+*/bin
+*/.metadata
+*/Debug
+*.xdxf
+*.prspdict
+*.opensdf
+*.psess
+*.sdf
+*.suo
