@@ -74,10 +74,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\desaturate.c" />
     <ClCompile Include="src\Radix.cpp" />
     <ClCompile Include="src\unicode.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\desaturate.h" />
     <ClInclude Include="src\stdint.h" />
     <ClInclude Include="src\unicode.h" />
   </ItemGroup>

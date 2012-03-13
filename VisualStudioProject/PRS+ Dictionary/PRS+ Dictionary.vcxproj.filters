@@ -21,12 +21,18 @@
     <ClCompile Include="src\unicode.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\desaturate.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\stdint.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\unicode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\desaturate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

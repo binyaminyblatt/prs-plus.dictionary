@@ -11,6 +11,7 @@
 #include "stdint.h"
 #endif 
 #include "unicode.h"
+#include "desaturate.h"
 
 #define ERR_FILE_NOT_FOUND -1
 #define ERR_INTERNAL_ERROR -2

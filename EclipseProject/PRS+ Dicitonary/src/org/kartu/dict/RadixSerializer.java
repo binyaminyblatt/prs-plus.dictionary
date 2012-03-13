@@ -8,7 +8,6 @@ import java.util.List;
 
 import org.kartu.IOUtils;
 
-import ds.tree.RadixTreeImpl;
 import ds.tree.RadixTreeNode;
 
 /**
@@ -28,18 +27,8 @@ public class RadixSerializer {
 		return instance;
 	}
 
-	public static void main(String[] args) throws IOException {
-		RandomAccessFile raf = new RandomAccessFile("radix.dat", "rw");
-		raf.setLength(0);
-		RadixTreeImpl<Integer> radixTree = new RadixTreeImpl<Integer>();
-		radixTree.insert("one", 1);
-		radixTree.insert("on", 2);
-		radixTree.insert("once", 3);
-		getInstance().persistRadix(Charset.forName("UTF-16LE"), 0, radixTree.root, raf); 
-		raf.close();
-	}
-	
-	public final int persistRadix(Charset charset, int offset, RadixTreeNode<Integer> node, RandomAccessFile out) throws IOException {
+	// Persist word list + pointers
+	public final int persistRadix(Charset charset, int offset, int offsetValue1, int offsetValue2, RadixTreeNode<int[]> node, RandomAccessFile out) throws IOException {
 		// size of the block (short)
 		// value (VALUE_SIZE), 0 if not real
 		// num of children (byte) FIXME for Chinese might need to change to short
@@ -53,7 +42,8 @@ public class RadixSerializer {
 		size += IOUtils.writeShort(out, 0);
 		
 		// value
-		size += IOUtils.writeInt(out, node.real ? node.value : 0);
+		size += IOUtils.writeInt(out, node.real ? node.value[0] + offsetValue1 : 0);
+		size += IOUtils.writeInt(out, node.real ? node.value[1] + offsetValue2 : 0);
 
 		// num of children
 		int nChildren = node.childern.size();
@@ -68,7 +58,7 @@ public class RadixSerializer {
 		}
 
 		// children names (heading length)
-		for (RadixTreeNode<Integer> child : node.childern) {
+		for (RadixTreeNode<int[]> child : node.childern) {
 			byte[] buf = child.key.getBytes(charset);
 			out.write(buf);
 			out.write(EOSTR);
@@ -78,9 +68,9 @@ public class RadixSerializer {
 		// fill children pointers
 		offset += size;
 		List<Integer> childrenOffsets = new ArrayList<Integer>(node.childern.size());
-		for (RadixTreeNode<Integer> child : node.childern) {
+		for (RadixTreeNode<int[]> child : node.childern) {
 			childrenOffsets.add(offset);
-			offset = persistRadix(charset, offset, child, out);
+			offset = persistRadix(charset, offset, offsetValue1, offsetValue2, child, out);
 		}
 		
 		// Write size of the block
