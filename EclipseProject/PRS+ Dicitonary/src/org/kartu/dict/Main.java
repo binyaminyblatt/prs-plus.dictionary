@@ -12,6 +12,47 @@ import org.kartu.dict.xdxf.visual.XDXFParser;
 import ds.tree.DuplicateKeyException;
 import ds.tree.RadixTreeImpl;
 
+/**
+ * PRS+ dictionary file format is:
+ *  
+ *  (all offsets are absolute)
+ * 
+ *  [header]
+ *  [articles]
+ *  [word list]
+ *  [radix]
+ *  
+ *  header : 
+ *  	"PRSPDICT" (ascii)
+ *  	version lo (uint8) 
+ *  	version hi (uint8)
+ *  	radix offset (uint32)
+ *  	... rest is padded with zeros up to 1024 bytes
+ *  
+ *  articles : article*
+ *   
+ *  article:
+ *  	length (unit32)
+ *  	article (utf8 text)
+ *  
+ *  word list:
+ *   	name (UTF8)
+ *   	\0
+ *   	short translation (up to SHORT_TRANSLATION_LEN chars, UTF8)
+ *   	\0
+ *  
+ *  radix: node*
+ *  
+ *  node: 
+ *  	length - size of the structure in bytes (uint16)
+ *  	article offset - (uint32)
+ *  	word list offset - (uint32)
+ *  	number of child nodes - (uint8)
+ *  	offsets of child nodes (uint32 * number of child nodes)
+ *  	zero terminated UTF16 names of child nodes (length can be determined by total length of the node)
+ *  
+ * @author kartu
+ */
 public class Main {
 	private static final Logger log = Logger.getLogger(Main.class);
 	static final int HEADER_SIZE = 1024;
@@ -29,12 +70,12 @@ public class Main {
 		String outputFileName = args[1];
 
 		// Write header (zeros)
-		RandomAccessFile raf = new RandomAccessFile(outputFileName, "rw");
-		raf.setLength(HEADER_SIZE);
-		raf.seek(HEADER_SIZE);
+		RandomAccessFile outputFile = new RandomAccessFile(outputFileName, "rw");
+		outputFile.setLength(HEADER_SIZE);
+		outputFile.seek(HEADER_SIZE);
 		
-		// Temporary file for quick lookup of words with closes match
-		RandomAccessFile rafTemp = new RandomAccessFile(File.createTempFile("prspDictTemp", ".prspdict"), "rw");
+		// Temporary file for quick lookup of words with closest match
+		RandomAccessFile wordListFile = new RandomAccessFile(File.createTempFile("prspDictTemp", ".prspdict"), "rw");
 
 		// Open input xdxf file
 		IDictionaryParser parser = new XDXFParser();
@@ -43,22 +84,26 @@ public class Main {
 		
 		RadixTreeImpl<int[]> tree = new RadixTreeImpl<int[]>();
 		IDictionaryArticle article;
-		int offset = 0;
-		int shortOffset = 0;
+		int articlesLen = 0;
+		int wordListLen = 0;
 		long nArticles = 0;
 		while ((article = parser.getNext()) != null) {
 			// translation
-			byte[] content = article.getTranslation().getBytes(ARTICLE_CHARSET);
+			String translation = article.getTranslation();
+			byte[] content = translation.getBytes(ARTICLE_CHARSET);
 			// keyword + short translation
-			String shortTranslation = article.getKeyword() + '\0' + article.getTranslation().substring(0, SHORT_TRANSLATION_LEN) + '\0';
+			int shortTranslationLen = Math.min(SHORT_TRANSLATION_LEN, translation.length());
+			// aka word list record
+			String shortTranslation = article.getKeyword() + '\0' + translation.substring(0, shortTranslationLen) + '\0';
 			byte[] shortContent = shortTranslation.getBytes(ARTICLE_CHARSET);
 			try {
-				tree.insert(article.getKeyword(), new int[] {offset, shortOffset});
-				IOUtils.writeInt(raf, content.length);
-				raf.write(content);
-				rafTemp.write(shortContent);
-				offset += content.length + 8;
-				shortOffset += shortContent.length;
+				tree.insert(article.getKeyword(), new int[] {articlesLen, wordListLen});
+				IOUtils.writeInt(outputFile, content.length);
+				outputFile.write(content);
+				wordListFile.write(shortContent);
+				// 4 bytes is length of the article
+				articlesLen += content.length + 4; 
+				wordListLen += shortContent.length;
 				nArticles++;
 			} catch (DuplicateKeyException e) {
 				log.warn("Duplicate article: " + article.getKeyword());
@@ -69,30 +114,34 @@ public class Main {
 
 		//------------------------------- Write header --------------------------------------
 		log.info("Writing header");
-		raf.seek(0);
+		outputFile.seek(0);
 		// magic
-		raf.write("PRSPDICT".getBytes("ASCII"));
+		outputFile.write("PRSPDICT".getBytes("ASCII"));
 		// header size
-		IOUtils.writeShort(raf, HEADER_SIZE - 8 /* magic */);
+		IOUtils.writeShort(outputFile, HEADER_SIZE - 8 /* magic */);
 		
 		// version
-		raf.write(0); // lo
-		raf.write(1); // hi
+		outputFile.write(0); // lo
+		outputFile.write(1); // hi
 		
 		// index offset
-		IOUtils.writeInt(raf, offset + shortOffset + HEADER_SIZE);
+		int radixOffset = articlesLen + wordListLen + HEADER_SIZE;
+		IOUtils.writeInt(outputFile, radixOffset);
 		
-		// rewind
-		raf.seek(offset + HEADER_SIZE);
+		// rewind past header + articles
+		outputFile.seek(articlesLen + HEADER_SIZE);
 		
 		// write word list
-		rafTemp.seek(0);
-		IOUtils.writeRaf(raf, rafTemp);
+		wordListFile.seek(0); 
+		IOUtils.writeRaf(outputFile, wordListFile);
+		
+		// File position must equal radix offset
+		assert(outputFile.getFilePointer() == radixOffset);
 		
 		// Write index
 		log.info("Writing indices");
-		RadixSerializer.getInstance().persistRadix(KEY_CHARSET, offset + shortOffset + HEADER_SIZE, HEADER_SIZE, HEADER_SIZE + offset, tree.root, raf);
-		raf.close();
+		RadixSerializer.getInstance().persistRadix(KEY_CHARSET, radixOffset, HEADER_SIZE, HEADER_SIZE + articlesLen, tree.root, outputFile);
+		outputFile.close();
 		
 		log.info("OK");
 	}

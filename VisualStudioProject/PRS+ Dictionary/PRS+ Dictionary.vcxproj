@@ -75,7 +75,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\desaturate.c" />
-    <ClCompile Include="src\Radix.cpp" />
+    <ClCompile Include="src\dictionary.cpp" />
     <ClCompile Include="src\unicode.c" />
   </ItemGroup>
   <ItemGroup>

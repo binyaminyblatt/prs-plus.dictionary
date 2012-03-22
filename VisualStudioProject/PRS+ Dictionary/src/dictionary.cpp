@@ -35,7 +35,8 @@ struct Header {
 
 struct Node {
 	uint16_t len; // length of the structure
-	uint32_t value; // pointer to the article (offset in file)
+	uint32_t valueArticle; // pointer to the article (offset in file)
+	uint32_t valueWordList; // pointer to the word list entry (offset in file)
 	uint8_t nchildren; // number of child nodes
 	uint32_t pchildren[1024]; // pointers to child nodes (offset in file)
 	uint16_t children_names [64*1024]; // zero terminated UTF-16 names
@@ -193,9 +194,9 @@ int main(int argc, char* argv[])
 	// TODO find list of matching words
 	
 	// Dumping article, if exact match
-	if (node.value != 0 && nfound == search_len) {
-		printf("Found %d chars match, disk accessed %d times, offset is %d\n", nfound, n_disk_accesses, node.value);
-		doseek(node.value);
+	if (node.valueArticle != 0 && nfound == search_len) {
+		printf("Found %d chars match, disk accessed %d times, offset is %d\n", nfound, n_disk_accesses, node.valueArticle);
+		doseek(node.valueArticle);
 		uint8_t article_len[4];
 		doread(&article_len, sizeof(article_len));
 		int len = article_len[0] + 256*article_len[1] + 256*256*article_len[2] + 256*256*256*article_len[3];
