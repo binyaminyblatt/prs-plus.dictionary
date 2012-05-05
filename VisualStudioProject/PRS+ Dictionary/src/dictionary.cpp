@@ -175,6 +175,7 @@ int find_matching_child(Node node, uint16_t* search_str, int str_len, int& match
 */
 int find_match(uint32_t offset, uint16_t* search_str, int str_len) {
 	// TODO
+	return 0;
 }
 
 int main(int argc, char* argv[])
