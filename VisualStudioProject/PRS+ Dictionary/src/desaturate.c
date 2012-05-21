@@ -26,9 +26,9 @@ uint16_t desaturate(uint16_t ch) {
 	/*
 		80–FF, C1 Controls and Latin-1 Supplement
 	*/
-	if (ch > 0xc0 && ch < 0x240) {
+	if (ch >= 0xc0 && ch <= 0x240) {
 		uint16_t map[] = {
-			//U+		0	1	2	3	4	5	6	7	8	9	A	B	C	D	E	F  */
+			//U+	0	1	2	3	4	5	6	7	8	9	A	B	C	D	E	F 
 			//00C0	À	Á	Â	Ã	Ä	Å	Æ	Ç	È	É	Ê	Ë	Ì	Í	Î	Ï  TODO: Æ
 				   'a','a','a','a','a','a','a','c','e','e','e','e','i','i','i','i',
 			//00D0	Ð	Ñ	Ò	Ó	Ô	Õ	Ö	×	Ø	Ù	Ú	Û	Ü	Ý	Þ	ß  TODO: ß
@@ -91,7 +91,7 @@ uint16_t desaturate(uint16_t ch) {
 	/*
 		Latin Extended Additional 1E00–1EFF
 	*/
-	if (ch > 0x1e00 & ch < 0x1eff) {
+	if (ch >= 0x1e00 & ch <= 0x1eff) {
 		uint16_t map[] = {
 			//U+		0	1	2	3	4	5	6	7	8	9	A	B	C	D	E	F 
 			//  1E00	Ḁ	ḁ	Ḃ	ḃ	Ḅ	ḅ	Ḇ	ḇ	Ḉ	ḉ	Ḋ	ḋ	Ḍ	ḍ	Ḏ	ḏ	
@@ -127,6 +127,30 @@ uint16_t desaturate(uint16_t ch) {
 			//	1EF0	Ự	ự	Ỳ	ỳ	Ỵ	ỵ	Ỷ	ỷ	Ỹ	ỹ	Ỻ	ỻ	Ỽ	ỽ	Ỿ	ỿ
 					   'v','v','y','y','y','y','y','y','y','y', 0,  0,  0,  0,  0,  0
 		};
+
+		uint16_t tmp = map[ch - 0x1e00];
+		if (tmp != 0) {
+			return tmp;
+		}
+
+	}
+
+	/*
+		Cyrrilic 0x400 - 0x45f
+
+		U+		0	1	2	3	4	5	6	7	8	9	A	B	C	D	E	F 
+		U+040x	Ѐ	Ё	Ђ	Ѓ	Є	Ѕ	І	Ї	Ј	Љ	Њ	Ћ	Ќ	Ѝ	Ў	Џ
+		U+041x	А	Б	В	Г	Д	Е	Ж	З	И	Й	К	Л	М	Н	О	П
+		U+042x	Р	С	Т	У	Ф	Х	Ц	Ч	Ш	Щ	Ъ	Ы	Ь	Э	Ю	Я
+		U+043x	а	б	в	г	д	е	ж	з	и	й	к	л	м	н	о	п
+		U+044x	р	с	т	у	ф	х	ц	ч	ш	щ	ъ	ы	ь	э	ю	я
+		U+045x	ѐ	ё	ђ	ѓ	є	ѕ	і	ї	ј	љ	њ	ћ	ќ	ѝ	ў	џ
+	*/
+	if (ch >= 0x400 && ch < 0x410) {
+		return ch + 0x10*5;
+	}
+	if (ch >= 0x410 && ch < 0x430){
+		return ch + 0x10*2;
 	}
 
 	return ch;
