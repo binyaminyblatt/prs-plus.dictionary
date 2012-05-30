@@ -18,10 +18,10 @@
     <ClCompile Include="src\unicode.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\desaturate.c">
+    <ClCompile Include="src\dictionary.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\dictionary.cpp">
+    <ClCompile Include="src\desaturate.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

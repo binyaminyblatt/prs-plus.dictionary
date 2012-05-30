@@ -15,7 +15,7 @@ uint16_t desaturate(uint16_t ch) {
 	*/
 	if (ch > 0x40 && ch < 0x5b) {
 		// convert to lower case
-		return ch + 0x10;
+		return ch + 0x20;
 	}
 	if (ch > 0x60 && ch < 0x7b) {
 		// char is already lower case
@@ -91,7 +91,7 @@ uint16_t desaturate(uint16_t ch) {
 	/*
 		Latin Extended Additional 1E00–1EFF
 	*/
-	if (ch >= 0x1e00 & ch <= 0x1eff) {
+	if (ch >= 0x1e00 && ch <= 0x1eff) {
 		uint16_t map[] = {
 			//U+		0	1	2	3	4	5	6	7	8	9	A	B	C	D	E	F 
 			//  1E00	Ḁ	ḁ	Ḃ	ḃ	Ḅ	ḅ	Ḇ	ḇ	Ḉ	ḉ	Ḋ	ḋ	Ḍ	ḍ	Ḏ	ḏ	

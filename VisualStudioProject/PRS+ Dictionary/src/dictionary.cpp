@@ -50,7 +50,7 @@
 #include <stdint.h>
 #else
 #include "stdint.h"
-#endif 
+#endif
 #include "unicode.h"
 #include "desaturate.h"
 
@@ -64,7 +64,9 @@
 
 #pragma pack(1)
 
+// Globals
 FILE* f;
+int n_disk_accesses = 1;
 
 // Dictionary file header
 struct Header {
@@ -112,6 +114,7 @@ void doread(void* buf, int size) {
 	if (size == 0) {
 		return;
 	}
+	n_disk_accesses++;
 	int result = (int) fread(buf, size, 1, f);
 	if (result != 1) {
 		fpos_t fpos;
@@ -133,10 +136,15 @@ void read_node(Node& node) {
 
 /**
 * Finds matching node in the list referenced by <node>. Returns -1 if no matching node were found.
+*	node - node to examine
+*	search_str - pointer to UTF16 string
+*	str_len - length (in words) of UTF16 string
+*	match_count - output variable, returns number of matched characters
+*	returns index of the matching node, or -1 if none can be matched
 */
-int find_matching_child(Node node, uint16_t* search_str, int str_len, int& matched_count) {
+int find_matching_child (Node node, uint16_t* search_str, int str_len, int& matched_count, bool normalize = false, int starting_idx = 0) {
 	uint16_t* pchildren = &(node.children_names[0]);
-	for (int i = 0, n = node.nchildren; i < n; i++) {
+	for (int i = starting_idx, n = node.nchildren; i < n; i++) {
 		// Compare
 		int j;
 
@@ -147,11 +155,18 @@ int find_matching_child(Node node, uint16_t* search_str, int str_len, int& match
 				matched_count = j;
 				return i;
 			}
+
 			// Reached mismatching character
-			// TODO case sensitivity
-			if (pchildren[j] != search_str[j]) {
-				mismatch = true;
-				break;
+			if (normalize) {
+				if ( desaturate(pchildren[j]) != desaturate(search_str[j]) ) {
+					mismatch = true;
+					break;
+				}
+			} else {
+				if (pchildren[j] != search_str[j]) {
+					mismatch = true;
+					break;
+				}
 			}
 		}
 		if (mismatch) {
@@ -174,8 +189,48 @@ int find_matching_child(Node node, uint16_t* search_str, int str_len, int& match
 
 */
 int find_match(uint32_t offset, uint16_t* search_str, int str_len) {
-	// TODO
-	return 0;
+	Node node;
+	// TODO find best match =/
+
+	// Find exact match
+	doseek(offset);
+	read_node(node);
+
+	int matched_count;
+	int matched_idx = 0;
+
+	// Doing it in a loop since more than one node can match
+	while (matched_idx < node.nchildren) {
+		int find_result = find_matching_child(node, search_str, str_len, matched_count, false, matched_idx);
+		// no direct match, looking for normalized comparison
+		if (find_result < 0) {			
+			find_result = find_matching_child(node, search_str, str_len, matched_count, true, matched_idx);
+		}
+
+		// can't find matching node
+		if (find_result < 0) {
+			return NULL;
+		}
+
+		matched_idx = find_result;
+
+		// matched node offset
+		int matched_offset = node.pchildren[matched_idx];
+
+		// found full match
+		if (str_len <= matched_count) {
+			return matched_offset;
+		}
+		
+		// recursive call, if something is found, return, if not, we still can have a chance with the next match
+		int result = find_match(matched_offset, search_str + matched_count, str_len - matched_count);
+		if (result != NULL) {
+			return result;
+		}
+	}
+
+	// found nothing
+	return NULL;
 }
 
 int main(int argc, char* argv[])
@@ -241,13 +296,40 @@ int main(int argc, char* argv[])
 		return ERR_UNSUPPORTED_VERSION;
 	}
 
+	// New method of finding exact or nearest match
+	int searchResult = find_match(header.offset, searchUTF16, search_len);
+	if (searchResult != NULL) {
+		doseek(searchResult);
+		Node node;
+		read_node(node);
+
+		if (node.valueArticle != 0) {
+			printf("Found %d chars match, disk accessed %d times, offset is %d\n", 0 /* TODO */, n_disk_accesses, node.valueArticle);
+			doseek(node.valueArticle);
+			uint8_t article_len[4];
+			doread(&article_len, sizeof(article_len));
+			int len = article_len[0] + 256*article_len[1] + 256*256*article_len[2] + 256*256*256*article_len[3];
+			printf("Article size: %d\n", len);
+			uint8_t* buf = (uint8_t*) malloc(len + 1);
+			doread(buf, len);
+			buf[len] = 0;
+			printf("Article is:\n%s", buf);
+			free(buf);
+		} else {
+			// TODO dump word list
+			printf("String '%s' wasn't found\n", searchUTF8);
+		}
+	}
+
+
+	/* Old method of finding exact match
 	// Move to indices
 	doseek(header.offset);
 
 	Node node;
 	// Read root node
 	read_node(node);
-
+		
 	int n_disk_accesses = 1;
 	// number of matching chars
  	int nfound = 0;
@@ -263,6 +345,7 @@ int main(int argc, char* argv[])
 		n_disk_accesses++;
 	}
 	
+
 	// TODO find list of matching words
 	
 	// Dumping article, if exact match
@@ -282,7 +365,7 @@ int main(int argc, char* argv[])
 		// TODO dump word list
 		printf("String '%s' wasn't found\n", searchUTF8);
 	}
-
+	*/
 	
 	fclose(f);
 	return 0;
