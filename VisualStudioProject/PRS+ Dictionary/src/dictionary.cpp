@@ -61,6 +61,7 @@
 #define ERR_INVALID_MAGIC -5
 
 #define OFFSET_NCHILDREN 6
+#define WORD_LIST_BUF_LEN 4096*4
 
 #pragma pack(1)
 
@@ -182,15 +183,13 @@ int find_matching_child (Node node, uint16_t* search_str, int str_len, int& matc
 }
 
 /* 
-	Recursively seeks best match, returns:
+	Recursively seeks for exact match, returns:
 		positive number - (file offset of the article) if there was an exact match
-		negative number - (negative of file offset of the word list) if string can be matched only partially
 		0 - if no match at all can be found (TODO is this possible?)
 
 */
-int find_match(uint32_t offset, uint16_t* search_str, int str_len) {
+int find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
 	Node node;
-	// TODO find best match =/
 
 	// Find exact match
 	doseek(offset);
@@ -209,7 +208,7 @@ int find_match(uint32_t offset, uint16_t* search_str, int str_len) {
 
 		// can't find matching node
 		if (find_result < 0) {
-			return NULL;
+			return 0;
 		}
 
 		matched_idx = find_result;
@@ -223,7 +222,7 @@ int find_match(uint32_t offset, uint16_t* search_str, int str_len) {
 		}
 		
 		// recursive call, if something is found, return, if not, we still can have a chance with the next match
-		int result = find_match(matched_offset, search_str + matched_count, str_len - matched_count);
+		int result = find_exact_match(matched_offset, search_str + matched_count, str_len - matched_count);
 		if (result != NULL) {
 			return result;
 		}
@@ -232,6 +231,34 @@ int find_match(uint32_t offset, uint16_t* search_str, int str_len) {
 	// found nothing
 	return NULL;
 }
+
+/**
+* Finds nearest match, should be called only if exact match isn't possible.
+*/
+Node& find_best_match(uint32_t offset, uint16_t* search_str, int str_len) {
+	Node& node = *(new Node());
+
+	// Find exact match
+	doseek(offset);
+	read_node(node);
+
+	int i = 0;
+	int ret = 0;
+	do {
+		int matched_count;
+		ret = find_matching_child(node, search_str + i, str_len - i, matched_count, true);
+		if (ret >= 0) {
+			i += matched_count;
+			doseek(node.pchildren[ret]);
+			read_node(node);
+		}
+	} while (ret >= 0 && str_len - i >= 0) ;
+
+
+	// TODO ensure to find real, not virtual node
+
+	return node;
+};
 
 int main(int argc, char* argv[])
 {
@@ -297,14 +324,16 @@ int main(int argc, char* argv[])
 	}
 
 	// New method of finding exact or nearest match
-	int searchResult = find_match(header.offset, searchUTF16, search_len);
+	bool foundMatch = false;
+	int searchResult = find_exact_match(header.offset, searchUTF16, search_len);
 	if (searchResult != NULL) {
 		doseek(searchResult);
 		Node node;
 		read_node(node);
 
 		if (node.valueArticle != 0) {
-			printf("Found %d chars match, disk accessed %d times, offset is %d\n", 0 /* TODO */, n_disk_accesses, node.valueArticle);
+			foundMatch = true;
+			printf("Found exact match, disk accessed %d times, offset is %d\n", n_disk_accesses, node.valueArticle);
 			doseek(node.valueArticle);
 			uint8_t article_len[4];
 			doread(&article_len, sizeof(article_len));
@@ -315,10 +344,28 @@ int main(int argc, char* argv[])
 			buf[len] = 0;
 			printf("Article is:\n%s", buf);
 			free(buf);
-		} else {
-			// TODO dump word list
-			printf("String '%s' wasn't found\n", searchUTF8);
 		}
+	}
+	
+	if (!foundMatch) {
+		// No direct match, looking for best match
+		Node& node = find_best_match(header.offset, searchUTF16, search_len);
+		// FIXME check if value word list is not zero
+		doseek(node.valueWordList);
+		uint8_t buf[WORD_LIST_BUF_LEN];
+		// FIXME ensure it is within file size
+		doread(buf, WORD_LIST_BUF_LEN);
+		// TODO finish
+		for (int i = 0; i < WORD_LIST_BUF_LEN; i++) {
+			printf((char*) (&buf[i]));
+			
+			// skip to the next word
+			i++;
+			while (buf[i] != 0 && i <= WORD_LIST_BUF_LEN) {
+				i++;
+			}
+		}
+		
 	}
 
 

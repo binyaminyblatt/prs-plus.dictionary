@@ -94,7 +94,7 @@ public class Main {
 			// keyword + short translation
 			int shortTranslationLen = Math.min(SHORT_TRANSLATION_LEN, translation.length());
 			// aka word list record
-			String shortTranslation = article.getKeyword() + '\0' + translation.substring(0, shortTranslationLen) + '\0';
+			String shortTranslation = article.getKeyword() + '\0' + translation.substring(0, shortTranslationLen).replaceAll("[\\s]+", "") + '\0';
 			byte[] shortContent = shortTranslation.getBytes(ARTICLE_CHARSET);
 			try {
 				tree.insert(article.getKeyword(), new int[] {articlesLen, wordListLen});
