@@ -61,7 +61,8 @@
 #define ERR_INVALID_MAGIC -5
 
 #define OFFSET_NCHILDREN 6
-#define WORD_LIST_BUF_LEN 4096*4
+#define WORD_LIST_MAX 20
+#define WORD_LIST_BUF_LEN WORD_LIST_MAX*256*2
 
 #pragma pack(1)
 
@@ -185,7 +186,7 @@ int find_matching_child (Node node, uint16_t* search_str, int str_len, int& matc
 /* 
 	Recursively seeks for exact match, returns:
 		positive number - (file offset of the article) if there was an exact match
-		0 - if no match at all can be found (TODO is this possible?)
+		0 - if no match at all can be found
 
 */
 int find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
@@ -229,7 +230,7 @@ int find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
 	}
 
 	// found nothing
-	return NULL;
+	return 0;
 }
 
 /**
@@ -246,7 +247,7 @@ Node& find_best_match(uint32_t offset, uint16_t* search_str, int str_len) {
 	int ret = 0;
 	do {
 		int matched_count;
-		ret = find_matching_child(node, search_str + i, str_len - i, matched_count, true);
+		ret = find_matching_child(node, search_str + i, str_len - i, matched_count, false);
 		if (ret >= 0) {
 			i += matched_count;
 			doseek(node.pchildren[ret]);
@@ -255,7 +256,12 @@ Node& find_best_match(uint32_t offset, uint16_t* search_str, int str_len) {
 	} while (ret >= 0 && str_len - i >= 0) ;
 
 
-	// TODO ensure to find real, not virtual node
+	// Ensuring to find real, not virtual node
+	// virtual node must have at least one child
+	while (node.valueArticle == 0) {
+		doseek(node.pchildren[0]);
+		read_node(node);
+	}
 
 	return node;
 };
@@ -350,69 +356,50 @@ int main(int argc, char* argv[])
 	if (!foundMatch) {
 		// No direct match, looking for best match
 		Node& node = find_best_match(header.offset, searchUTF16, search_len);
-		// FIXME check if value word list is not zero
-		doseek(node.valueWordList);
+
+		// Reading word list with short translations
+		// <word>\0<translation>\0
+		//
+		int currentPos = node.valueWordList;
+		doseek(currentPos);
+		int printedWords = 0;
+		// where we have seen zero last time
+		// not really eof, but end of word list.
+		// word list ends where radix starts
+		bool eofReached = false;
 		uint8_t buf[WORD_LIST_BUF_LEN];
-		// FIXME ensure it is within file size
-		doread(buf, WORD_LIST_BUF_LEN);
-		// TODO finish
-		for (int i = 0; i < WORD_LIST_BUF_LEN; i++) {
-			printf((char*) (&buf[i]));
-			
-			// skip to the next word
-			i++;
-			while (buf[i] != 0 && i <= WORD_LIST_BUF_LEN) {
-				i++;
+		do {
+			// header.offset is where word list ends and radix begins
+			// find max length we can read from word list block
+			int len = currentPos + WORD_LIST_BUF_LEN < header.offset ? WORD_LIST_BUF_LEN : header.offset - currentPos;
+			doread(buf, len);
+			int lastZero = -1;
+			for (int i = 0; i < len; i++) {
+				if (buf[i] == 0) {
+					buf[i] = printedWords % 2 == 0 ? '\t' : '\n';
+					lastZero = i;
+					printedWords++;
+				}
 			}
-		}
-		
+
+			if (lastZero < 1) {
+				// couldn't find any more matches, exit loop
+				break;
+			}
+
+			// Ok, read the buffer, let's print what we've read
+			// put zero on the last seen zero position
+			buf[lastZero] = 0;
+			printf((char*) &buf);
+
+			// adjust current position
+			currentPos += lastZero + 1;
+		} while (printedWords < WORD_LIST_MAX*2 && currentPos < header.offset);
+
+		// TODO output current position to be able to scroll further / back
+		// TODO what about the case when no direct match can be found, even for the word from the list?
+		// shouldn't word list also contain pointers to particular word translation?
 	}
-
-
-	/* Old method of finding exact match
-	// Move to indices
-	doseek(header.offset);
-
-	Node node;
-	// Read root node
-	read_node(node);
-		
-	int n_disk_accesses = 1;
-	// number of matching chars
- 	int nfound = 0;
-	while (nfound < search_len) {
-		int ncount;
-		int result = find_matching_child(node, searchUTF16 + nfound, search_len - nfound, ncount);
-		if (result < 0) {
-			break;
-		}
-		nfound += ncount;
-		doseek(node.pchildren[result]);
-		read_node(node);
-		n_disk_accesses++;
-	}
-	
-
-	// TODO find list of matching words
-	
-	// Dumping article, if exact match
-	if (node.valueArticle != 0 && nfound == search_len) {
-		printf("Found %d chars match, disk accessed %d times, offset is %d\n", nfound, n_disk_accesses, node.valueArticle);
-		doseek(node.valueArticle);
-		uint8_t article_len[4];
-		doread(&article_len, sizeof(article_len));
-		int len = article_len[0] + 256*article_len[1] + 256*256*article_len[2] + 256*256*256*article_len[3];
-		printf("Article size: %d\n", len);
-		uint8_t* buf = (uint8_t*) malloc(len + 1);
-		doread(buf, len);
-		buf[len] = 0;
-		printf("Article is:\n%s", buf);
-		free(buf);
-	} else {
-		// TODO dump word list
-		printf("String '%s' wasn't found\n", searchUTF8);
-	}
-	*/
 	
 	fclose(f);
 	return 0;
