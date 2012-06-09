@@ -28,12 +28,12 @@ public class AR {
 	public static Unmarshaller unmarshaller;
 	static {
 		try {
-			JAXBContext ctx = JAXBContext.newInstance(AR.class, B.class, C.class, I.class, K.class, TR.class);
+			JAXBContext ctx = JAXBContext.newInstance(ABR.class, AR.class, B.class, C.class, CO.class,
+						DTRN.class, EX.class, I.class, K.class, KREF.class, TR.class);
 			unmarshaller = ctx.createUnmarshaller();
 			unmarshaller.setEventHandler(new ValidationEventHandler() {
 				public boolean handleEvent(ValidationEvent event) {
-					System.out.println(event);
-					// TODO Auto-generated method stub
+					System.out.println("Parse error: " + event);
 					return false;
 				}
 				
@@ -67,9 +67,17 @@ public class AR {
 	}
 	
 	public String toString() {
+		return convertToString(false);
+	}
+
+	private String convertToString(boolean isShort) {
 		StringBuffer result = new StringBuffer();
 		result.append("");
 		for (Object element : this.elements) {
+			if (isShort && (element instanceof K || element instanceof KREF )) {
+				// skipping keyword & krefs for short translations
+				continue;
+			}
 			result.append(element);
 		}
 		result.append("\n");
@@ -77,6 +85,10 @@ public class AR {
 	}
 
 	public String getTranslation() {
-		return this.toString();
+		return convertToString(false);
+	}
+
+	public String getShortTranslation() {
+		return convertToString(true);
 	}
 }

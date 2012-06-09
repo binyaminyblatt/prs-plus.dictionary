@@ -1,7 +1,10 @@
 package org.kartu.dict.xdxf.visual.xml;
 
+import java.util.List;
+
+import javax.xml.bind.annotation.XmlAnyElement;
+import javax.xml.bind.annotation.XmlMixed;
 import javax.xml.bind.annotation.XmlRootElement;
-import javax.xml.bind.annotation.XmlValue;
 
 /**
  * Corresponds to "i" tag (italic) in xdxf visual format 
@@ -10,11 +13,17 @@ import javax.xml.bind.annotation.XmlValue;
  */
 @XmlRootElement (name="i")
 public class I {
-	@XmlValue
-	public String value;
+	@XmlAnyElement (lax=true) @XmlMixed
+	public List<Object> elements;
 	
 	@Override
 	public String toString() {
-		return value;
+		StringBuffer result = new StringBuffer();
+		result.append("_");
+		for (Object element : this.elements) {
+			result.append(element);
+		}
+		result.append("_");
+		return result.toString();
 	}
 }

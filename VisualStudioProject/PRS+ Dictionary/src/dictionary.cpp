@@ -86,10 +86,19 @@ struct Node {
 	uint32_t valueArticle; // pointer to the article (offset in file)
 	uint32_t valueWordList; // pointer to the word list entry (offset in file)
 	uint8_t nchildren; // number of child nodes
-	uint32_t pchildren[1024]; // pointers to child nodes (offset in file)
-	uint16_t children_names [64*1024]; // zero terminated UTF-16 names
+	uint32_t *pchildren; // pointers to child nodes (offset in file)
+	int pchildren_len; // size of pchildren
+	uint16_t *children_names; // zero terminated UTF-16 names
+	int children_names_len; // length of children_names
+
+	Node() {
+		pchildren_len = 0;
+		children_names_len = 0;
+		pchildren = NULL;
+		children_names = NULL;
+	}
 };
-int size_of_node = sizeof(Node) - sizeof(uint32_t[1024]) - sizeof(uint16_t[64*1024]);
+int size_of_node = sizeof(Node) - sizeof(uint32_t*) - sizeof(uint16_t*) - 2 * (sizeof(int));
 int size_of_pchildren = sizeof(uint32_t[1024]);
 
 void print_usage() {
@@ -132,8 +141,26 @@ void doread(void* buf, int size) {
 void read_node(Node& node) {
 	doread(&node, size_of_node);
 	int pchildren_len = sizeof(uint32_t*)* node.nchildren;
-	doread(&(node.pchildren), pchildren_len);
-	doread(&(node.children_names), node.len - size_of_node - pchildren_len);
+	int children_names_len = node.len - size_of_node - pchildren_len;
+
+	// ensure pchildren is big enough
+	if (node.pchildren_len < pchildren_len) {
+		if (node.pchildren_len > 0) {
+			free(node.pchildren);
+		}
+		node.pchildren = (uint32_t*) malloc(pchildren_len);
+	}
+
+	// ensure children_names is big enough
+	if (node.children_names_len < children_names_len) {
+		if (node.children_names_len > 0) {
+			free(node.children_names);
+		}
+		node.children_names = (uint16_t*) malloc(children_names_len);
+	}
+
+	doread(node.pchildren, pchildren_len);
+	doread(node.children_names, children_names_len);
 }
 
 /**
@@ -190,6 +217,7 @@ int find_matching_child (Node node, uint16_t* search_str, int str_len, int& matc
 
 */
 int find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
+	// FIXME add sanity check with max calls counter
 	Node node;
 
 	// Find exact match
@@ -200,8 +228,8 @@ int find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
 	int matched_idx = 0;
 
 	// Doing it in a loop since more than one node can match
+	int find_result = find_matching_child(node, search_str, str_len, matched_count, false, matched_idx);
 	while (matched_idx < node.nchildren) {
-		int find_result = find_matching_child(node, search_str, str_len, matched_count, false, matched_idx);
 		// no direct match, looking for normalized comparison
 		if (find_result < 0) {			
 			find_result = find_matching_child(node, search_str, str_len, matched_count, true, matched_idx);
@@ -223,10 +251,14 @@ int find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
 		}
 		
 		// recursive call, if something is found, return, if not, we still can have a chance with the next match
-		int result = find_exact_match(matched_offset, search_str + matched_count, str_len - matched_count);
-		if (result != NULL) {
-			return result;
+		if (matched_count > 0) {
+			int result = find_exact_match(matched_offset, search_str + matched_count, str_len - matched_count);
+			if (result != NULL) {
+				return result;
+			}
 		}
+
+		matched_count = 0;
 	}
 
 	// found nothing
@@ -360,7 +392,7 @@ int main(int argc, char* argv[])
 		// Reading word list with short translations
 		// <word>\0<translation>\0
 		//
-		int currentPos = node.valueWordList;
+		uint32_t currentPos = node.valueWordList;
 		doseek(currentPos);
 		int printedWords = 0;
 		// where we have seen zero last time
@@ -371,10 +403,10 @@ int main(int argc, char* argv[])
 		do {
 			// header.offset is where word list ends and radix begins
 			// find max length we can read from word list block
-			int len = currentPos + WORD_LIST_BUF_LEN < header.offset ? WORD_LIST_BUF_LEN : header.offset - currentPos;
+			uint32_t len = currentPos + WORD_LIST_BUF_LEN < header.offset ? WORD_LIST_BUF_LEN : header.offset - currentPos;
 			doread(buf, len);
 			int lastZero = -1;
-			for (int i = 0; i < len; i++) {
+			for (uint32_t i = 0; i < len && printedWords < WORD_LIST_MAX*2; i++) {
 				if (buf[i] == 0) {
 					buf[i] = printedWords % 2 == 0 ? '\t' : '\n';
 					lastZero = i;

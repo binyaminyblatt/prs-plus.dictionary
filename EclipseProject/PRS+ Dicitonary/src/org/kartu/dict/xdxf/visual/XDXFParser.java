@@ -2,6 +2,7 @@ package org.kartu.dict.xdxf.visual;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.List;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -70,12 +71,18 @@ public class XDXFParser implements IDictionaryParser, IDictionaryArticle {
 
 	@Override
 	public String getKeyword() {
-		return this.ar.getKeywords().get(0);
+		List<String> keywords = this.ar.getKeywords();
+		return keywords.size() > 0 ? keywords.get(0) : null;
 	}
 
 	@Override
 	public String getTranslation() {
 		return this.ar.getTranslation();
+	}
+
+	@Override
+	public String getShortTranslation() {
+		return this.ar.getShortTranslation();
 	}
 
 }

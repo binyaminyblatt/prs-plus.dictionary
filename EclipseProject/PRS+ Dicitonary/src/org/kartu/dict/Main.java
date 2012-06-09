@@ -88,13 +88,18 @@ public class Main {
 		int wordListLen = 0;
 		long nArticles = 0;
 		while ((article = parser.getNext()) != null) {
+			if (article.getKeyword() == null) {
+				// ignore articles without keyword
+				continue;
+			}
 			// translation
 			String translation = article.getTranslation();
+			String shortTranslation = article.getShortTranslation();
 			byte[] content = translation.getBytes(ARTICLE_CHARSET);
 			// keyword + short translation
-			int shortTranslationLen = Math.min(SHORT_TRANSLATION_LEN, translation.length());
+			int shortTranslationLen = Math.min(SHORT_TRANSLATION_LEN, shortTranslation.length());
 			// aka word list record
-			String shortTranslation = article.getKeyword() + '\0' + translation.substring(0, shortTranslationLen).replaceAll("[\\s]+", "") + '\0';
+			shortTranslation = article.getKeyword() + '\0' + shortTranslation.substring(0, shortTranslationLen).replaceAll("[\\s]+", " ").trim() + '\0';
 			byte[] shortContent = shortTranslation.getBytes(ARTICLE_CHARSET);
 			try {
 				tree.insert(article.getKeyword(), new int[] {articlesLen, wordListLen});

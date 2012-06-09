@@ -1,5 +1,9 @@
 package org.kartu.dict.xdxf.visual.xml;
 
+import java.util.List;
+
+import javax.xml.bind.annotation.XmlAnyElement;
+import javax.xml.bind.annotation.XmlMixed;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlValue;
 
@@ -10,11 +14,18 @@ import javax.xml.bind.annotation.XmlValue;
  */
 @XmlRootElement (name="b")
 public class B {
-	@XmlValue
-	public String value;
+	@XmlAnyElement (lax=true) @XmlMixed
+	public List<Object> elements;
 	
 	@Override
 	public String toString() {
-		return value;
+		if (this.elements == null) {
+			return null;
+		}
+		StringBuffer sb = new StringBuffer();
+		for (Object o : elements) {
+			sb.append(o);
+		}
+		return "*" + sb.toString() + "*";
 	}
 }
