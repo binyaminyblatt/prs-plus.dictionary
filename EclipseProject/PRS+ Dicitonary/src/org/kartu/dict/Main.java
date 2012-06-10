@@ -99,7 +99,12 @@ public class Main {
 			// keyword + short translation
 			int shortTranslationLen = Math.min(SHORT_TRANSLATION_LEN, shortTranslation.length());
 			// aka word list record
-			shortTranslation = article.getKeyword() + '\0' + shortTranslation.substring(0, shortTranslationLen).replaceAll("[\\s]+", " ").trim() + '\0';
+			shortTranslation = shortTranslation.substring(0, shortTranslationLen);
+			shortTranslation = shortTranslation.replaceAll("\\-", " " );
+			shortTranslation = shortTranslation.replaceAll("[\\s]+", " ");
+			shortTranslation = article.getKeyword() + '\0' + shortTranslation+ '\0';
+			
+			 
 			byte[] shortContent = shortTranslation.getBytes(ARTICLE_CHARSET);
 			try {
 				tree.insert(article.getKeyword(), new int[] {articlesLen, wordListLen});

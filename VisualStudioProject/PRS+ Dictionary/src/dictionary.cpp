@@ -63,6 +63,7 @@
 #define OFFSET_NCHILDREN 6
 #define WORD_LIST_MAX 20
 #define WORD_LIST_BUF_LEN WORD_LIST_MAX*256*2
+#define MAX_EXACT_MATCH_RECURSIVE_CALLS 1000
 
 #pragma pack(1)
 
@@ -171,9 +172,10 @@ void read_node(Node& node) {
 *	match_count - output variable, returns number of matched characters
 *	returns index of the matching node, or -1 if none can be matched
 */
-int find_matching_child (Node node, uint16_t* search_str, int str_len, int& matched_count, bool normalize = false, int starting_idx = 0) {
+int find_matching_child (Node node, uint16_t* search_str, int str_len, int& matched_count, bool normalize = false, int starting_idx = -1) {
 	uint16_t* pchildren = &(node.children_names[0]);
-	for (int i = starting_idx, n = node.nchildren; i < n; i++) {
+	
+	for (int i = starting_idx + 1, n = node.nchildren; i < n; i++) {
 		// Compare
 		int j;
 
@@ -207,6 +209,7 @@ int find_matching_child (Node node, uint16_t* search_str, int str_len, int& matc
 		matched_count = j;
 		return i;
 	}
+	matched_count = 0;
 	return -1;
 }
 
@@ -216,7 +219,16 @@ int find_matching_child (Node node, uint16_t* search_str, int str_len, int& matc
 		0 - if no match at all can be found
 
 */
+int find_exact_match_counter = 0;
 int find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
+	// Safeguard
+	if (find_exact_match_counter++ > MAX_EXACT_MATCH_RECURSIVE_CALLS) {
+		printf("Internal error, find_exact_match was called %d times", find_exact_match_counter);
+		exit(ERR_INTERNAL_ERROR);
+
+	}
+
+
 	// FIXME add sanity check with max calls counter
 	Node node;
 
@@ -225,18 +237,18 @@ int find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
 	read_node(node);
 
 	int matched_count;
-	int matched_idx = 0;
+	int matched_idx = -1;
 
 	// Doing it in a loop since more than one node can match
 	int find_result = find_matching_child(node, search_str, str_len, matched_count, false, matched_idx);
 	while (matched_idx < node.nchildren) {
 		// no direct match, looking for normalized comparison
-		if (find_result < 0) {			
+		if (find_result < 0 || matched_count < 1) {			
 			find_result = find_matching_child(node, search_str, str_len, matched_count, true, matched_idx);
 		}
 
 		// can't find matching node
-		if (find_result < 0) {
+		if (find_result < 0 || matched_count < 1) {
 			return 0;
 		}
 
@@ -255,6 +267,9 @@ int find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
 			int result = find_exact_match(matched_offset, search_str + matched_count, str_len - matched_count);
 			if (result != NULL) {
 				return result;
+			} else {
+				find_result = -1;
+				matched_count = 0;
 			}
 		}
 
