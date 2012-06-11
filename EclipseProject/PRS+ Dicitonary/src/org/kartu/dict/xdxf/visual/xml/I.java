@@ -21,7 +21,7 @@ public class I {
 		StringBuffer result = new StringBuffer();
 		result.append("_");
 		for (Object element : this.elements) {
-			result.append(element);
+			if (element != null) result.append(element);
 		}
 		result.append("_");
 		return result.toString();

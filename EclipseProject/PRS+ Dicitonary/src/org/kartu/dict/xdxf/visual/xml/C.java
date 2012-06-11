@@ -7,7 +7,7 @@ import javax.xml.bind.annotation.XmlMixed;
 import javax.xml.bind.annotation.XmlRootElement;
 
 /**
- * Corresponds to "c" tag (color code) in xdxf visual format
+ * Corresponds to "C" tag (color code)  in xdxf visual format
  * 
  * @author kartu
  */
@@ -24,7 +24,7 @@ public class C {
 		}
 		StringBuffer sb = new StringBuffer();
 		for (Object o : elements) {
-			sb.append(o);
+			if (o != null) sb.append(o);
 		}
 		return sb.toString() + "\n";
 	}

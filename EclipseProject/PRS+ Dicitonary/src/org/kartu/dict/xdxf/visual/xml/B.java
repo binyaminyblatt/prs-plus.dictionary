@@ -5,7 +5,6 @@ import java.util.List;
 import javax.xml.bind.annotation.XmlAnyElement;
 import javax.xml.bind.annotation.XmlMixed;
 import javax.xml.bind.annotation.XmlRootElement;
-import javax.xml.bind.annotation.XmlValue;
 
 /**
  * Corresponds to "b" tag (bold) in xdxf visual format
@@ -24,7 +23,7 @@ public class B {
 		}
 		StringBuffer sb = new StringBuffer();
 		for (Object o : elements) {
-			sb.append(o);
+			if (o != null) sb.append(o);
 		}
 		return "*" + sb.toString() + "*";
 	}

@@ -29,7 +29,7 @@ public class AR {
 	static {
 		try {
 			JAXBContext ctx = JAXBContext.newInstance(ABR.class, AR.class, B.class, C.class, CO.class,
-						DTRN.class, EX.class, I.class, K.class, KREF.class, TR.class);
+						DTRN.class, EX.class, I.class, K.class, KREF.class, NU.class, TR.class);
 			unmarshaller = ctx.createUnmarshaller();
 			unmarshaller.setEventHandler(new ValidationEventHandler() {
 				public boolean handleEvent(ValidationEvent event) {
@@ -78,7 +78,9 @@ public class AR {
 				// skipping keyword & krefs for short translations
 				continue;
 			}
-			result.append(element);
+			if (element != null) {
+				result.append(element);
+			}
 		}
 		result.append("\n");
 		return result.toString();

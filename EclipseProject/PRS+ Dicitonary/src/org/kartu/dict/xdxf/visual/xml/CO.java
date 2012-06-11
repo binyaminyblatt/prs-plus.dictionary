@@ -20,7 +20,7 @@ public class CO {
 	public String toString() {
 		StringBuffer result = new StringBuffer();
 		for (Object element : this.elements) {
-			result.append(element);
+			if (element != null) result.append(element);
 		}
 		return result.toString();
 	}

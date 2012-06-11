@@ -21,7 +21,7 @@ public class EX {
 		StringBuffer result = new StringBuffer();
 		result.append("{");
 		for (Object element : this.elements) {
-			result.append(element);
+			if (element != null) result.append(element);
 		}
 		result.append("}");
 		return result.toString();
