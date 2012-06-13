@@ -313,16 +313,38 @@ Node& find_best_match(uint32_t offset, uint16_t* search_str, int str_len) {
 	return node;
 };
 
+//
+// Supported commands are:
+//	<dict.file> e <word> - find exact match, if nothing found, dump list
+//	<dict.file> l <word> - dump list
+//  <dict.file> n <offset> - dump next word list starting from <offset>
+//  <dict.file> p <offset> - dump previous word list, ending at offset <offset>
+//  <dict.file> x <offset> - dump article at address x
+//
+// Output format:
+//	list result
+//		"list" <starting_offset> <ending_offset>\n
+//		<word>\t<short translation>\n
+//		<word>\t<short translation>\n
+//		...
+//
+//	exact result
+//		"match"\n
+//		<matched word>\n
+//		<translation>
+//			
 int main(int argc, char* argv[])
 {
 	// Expecting <exec name> <dictionary file> <word>
-	if (argc < 3) {
+	if (argc < 4) {
 		print_usage();
 		return ERR_INVALID_ARGUMENT;
 	}
 
+	char* command = (char*) argv[1];
+
 	// dictionary file name, fancy names aren't supported
-	char* filename = (char*) argv[1];
+	char* filename = (char*) argv[2];
 
 	// UTF8 version of the search string
 	uint8_t* searchUTF8 = (uint8_t*) argv[2];
