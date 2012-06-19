@@ -10,8 +10,10 @@
  *  
  *  header : 
  *  	"PRSPDICT" (ascii)
+ *		header size (uint16)
  *  	version lo (uint8) 
  *  	version hi (uint8)
+ *		word list offset (uint32)
  *  	radix offset (uint32)
  *  	... rest is padded with zeros up to 1024 bytes
  *  
@@ -67,18 +69,15 @@
 
 #pragma pack(1)
 
-// Globals
-FILE* f;
-int n_disk_accesses = 1;
-
 // Dictionary file header
 struct Header {
 	uint8_t magic[8];
 	uint16_t size;
 	uint8_t version_lo;
 	uint8_t version_hi;
-	uint32_t offset;
-	uint8_t junk[1008];
+	uint32_t offset_word_list;
+	uint32_t offset_radix;
+	uint8_t junk[1004];
 };
 
 // Radix entry
@@ -99,11 +98,21 @@ struct Node {
 		children_names = NULL;
 	}
 };
+
+// Globals
+Header header;
+FILE* f;
+int n_disk_accesses = 1;
 int size_of_node = sizeof(Node) - sizeof(uint32_t*) - sizeof(uint16_t*) - 2 * (sizeof(int));
 int size_of_pchildren = sizeof(uint32_t[1024]);
 
 void print_usage() {
-	printf("Usage:\n\t<program> <prspdic file> <search string>");
+	printf("Usage:\n");
+	printf("\t<dict.file> e <word> - find exact match, if nothing found, dump list\n");
+	printf("\t<dict.file> l <word> - dump list\n");
+	printf("\t<dict.file> n <offset> - dump next word list starting from <offset>\n");
+	printf("\t<dict.file> p <offset> - dump previous word list, ending at offset <offset>\n");
+	printf("\t<dict.file> x <offset> - dump article at address x\n");
 }
 
 
@@ -220,14 +229,13 @@ int find_matching_child (Node node, uint16_t* search_str, int str_len, int& matc
 
 */
 int find_exact_match_counter = 0;
-int find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
+int do_find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
 	// Safeguard
 	if (find_exact_match_counter++ > MAX_EXACT_MATCH_RECURSIVE_CALLS) {
 		printf("Internal error, find_exact_match was called %d times", find_exact_match_counter);
 		exit(ERR_INTERNAL_ERROR);
 
 	}
-
 
 	// FIXME add sanity check with max calls counter
 	Node node;
@@ -264,7 +272,7 @@ int find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
 		
 		// recursive call, if something is found, return, if not, we still can have a chance with the next match
 		if (matched_count > 0) {
-			int result = find_exact_match(matched_offset, search_str + matched_count, str_len - matched_count);
+			int result = do_find_exact_match(matched_offset, search_str + matched_count, str_len - matched_count);
 			if (result != NULL) {
 				return result;
 			} else {
@@ -283,7 +291,7 @@ int find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
 /**
 * Finds nearest match, should be called only if exact match isn't possible.
 */
-Node& find_best_match(uint32_t offset, uint16_t* search_str, int str_len) {
+Node& do_find_best_match(uint32_t offset, uint16_t* search_str, int str_len) {
 	Node& node = *(new Node());
 
 	// Find exact match
@@ -313,6 +321,175 @@ Node& find_best_match(uint32_t offset, uint16_t* search_str, int str_len) {
 	return node;
 };
 
+// Converts UTF8 to UTF16
+uint16_t* utf8to16(uint8_t* txt, int &len16) {
+	// Length of UTF8 version of the search string
+	int len = 0;
+	while (txt[len] != 0) {
+		len++;
+	}
+
+	uint16_t* txt16 = (uint16_t*) malloc((len + 1)*2);
+	uint16_t* txt16End = txt16;
+	ConversionResult res = ConvertUTF8toUTF16((const UTF8**) &txt, (const UTF8*) (txt + len), 
+			(UTF16**) &txt16End, (UTF16*) (txt16 + len*2), lenientConversion);
+
+	if (res != conversionOK) {
+		printf("Failed to convert input to UTF8");
+		exit(ERR_INTERNAL_ERROR);
+	}
+
+	// Size of UTF16 version of the search string (in two byte characters)
+	len16 = (int) (txt16End - txt16);
+	// Set trailing zero
+	txt16[len16] = 0;
+
+	return txt16;
+};
+
+void dump_article(uint32_t offset) {
+	printf("match\n");
+	doseek(offset);
+	uint8_t article_len[4];
+	doread(&article_len, sizeof(article_len));
+	int len = article_len[0] + 256*article_len[1] + 256*256*article_len[2] + 256*256*256*article_len[3];
+	uint8_t* buf = (uint8_t*) malloc(len + 1);
+	doread(buf, len);
+	buf[len] = 0;
+	printf((char*) buf);
+	free(buf);
+}
+
+// Finds and dumps exact match, returns false if nothing can be found
+bool find_exact_match (uint32_t offset, uint16_t* search_str, int str_len) {
+	bool result = false;
+	
+	int searchResult = do_find_exact_match(offset, search_str, str_len);
+	if (searchResult != NULL) {
+		doseek(searchResult);
+		Node node;
+		read_node(node);
+
+		if (node.valueArticle != 0) {
+			result = true;
+			dump_article(node.valueArticle);
+		}
+	}
+
+	return result;
+}
+
+
+// Dumps WORD_LIST_MAX words, if available
+enum SEEK_DIRECTION {PREV, MIDDLE, NEXT};
+void dump_word_list(uint32_t offset, SEEK_DIRECTION direction = NEXT, int words_to_seek_back = WORD_LIST_MAX * 2) {
+	int words_to_show = WORD_LIST_MAX * 2;
+	uint8_t buf[WORD_LIST_BUF_LEN];
+	uint32_t max_offset = header.offset_radix;
+	uint32_t min_offset = header.offset_word_list;
+	uint32_t currentPos = offset;
+
+	printf("list\n");
+
+	// words available after "rewind" operation
+	int rewind_words = 0;
+	if (direction != NEXT) {
+		// need to do one step back
+		currentPos--;
+
+		// rewind backward for up to WORD_LIST_MAX words (each word is 2 zeros)
+		// since rewinding backward, we need to find extra zero
+		int lastZero = -1;
+		int len = 0;
+		while (rewind_words < words_to_seek_back && currentPos >= min_offset) {
+			len = currentPos - WORD_LIST_BUF_LEN >= min_offset ? WORD_LIST_BUF_LEN : currentPos - min_offset;
+			lastZero = -1;
+			doseek(currentPos - len);	
+			doread(buf, len);
+			for (uint32_t i = len; i >= 0 && rewind_words < words_to_seek_back; i--) {
+				if (buf[i] == 0) {
+					lastZero = i;
+					rewind_words++;
+				}
+			}
+
+			if (lastZero < 1) {
+				// couldn't find any more matches, exit loop
+				break;
+			}
+
+			// adjust current position
+			currentPos -= (len - lastZero - 1);
+
+		}
+
+		words_to_show = rewind_words;
+		if (direction == MIDDLE) {
+			words_to_show *= 2 ;
+		}
+
+		if (rewind_words > 0 && lastZero > 0) {
+			// need to rewind to the next zero
+			int i = 0;
+			while (buf[lastZero + i] != 0 && i < len) {
+				i++;
+			}
+
+			currentPos -= i;
+		}
+	}
+
+	// Reading word list with short translations
+	// <word>\0<translation>\0
+	//	
+	int startingPos = currentPos; // position where we've started to dump the list
+	doseek(currentPos);
+	int printedWords = 0;
+	// where we have seen zero last time
+	// not really eof, but end of word list.
+	// word list ends where radix starts
+	bool eofReached = false;
+	do {
+		// header.offset is where word list ends and radix begins
+		// find max length we can read from word list block
+		uint32_t len = currentPos + WORD_LIST_BUF_LEN < max_offset ? WORD_LIST_BUF_LEN : max_offset - currentPos;
+		doread(buf, len);
+		int lastZero = -1;
+		for (uint32_t i = 0; i < len && printedWords < words_to_show; i++) {
+			if (buf[i] == 0) {
+				buf[i] = printedWords % 2 == 0 ? '\t' : '\n';
+				lastZero = i;
+				printedWords++;
+			}
+		}
+
+		if (lastZero < 1) {
+			// couldn't find any more matches, exit loop
+			break;
+		}
+
+		// Ok, read the buffer, let's print what we've read
+		// put zero on the last seen zero position
+		buf[lastZero] = 0;
+		printf((char*) &buf);
+
+		// adjust current position
+		currentPos += lastZero + 1;
+	} while (printedWords < words_to_show && currentPos < offset);
+
+	printf("\n%d\t%d", startingPos, currentPos);
+	// TODO what about the case when no direct match can be found, even for the word from the list?
+	// shouldn't word list also contain pointers to particular word translation?
+
+}
+
+// Finds and dumps betst matching words
+void find_best_match(uint16_t* search_str, int str_len) {
+	// No direct match, looking for best match
+	Node& node = do_find_best_match(header.offset_radix, search_str, str_len);
+	dump_word_list(node.valueWordList, MIDDLE, WORD_LIST_MAX);
+}
+
 //
 // Supported commands are:
 //	<dict.file> e <word> - find exact match, if nothing found, dump list
@@ -323,14 +500,14 @@ Node& find_best_match(uint32_t offset, uint16_t* search_str, int str_len) {
 //
 // Output format:
 //	list result
-//		"list" <starting_offset> <ending_offset>\n
+//		"list"
 //		<word>\t<short translation>\n
 //		<word>\t<short translation>\n
 //		...
+//		<starting_offset>\t<ending_offset>\n
 //
 //	exact result
 //		"match"\n
-//		<matched word>\n
 //		<translation>
 //			
 int main(int argc, char* argv[])
@@ -341,36 +518,14 @@ int main(int argc, char* argv[])
 		return ERR_INVALID_ARGUMENT;
 	}
 
-	char* command = (char*) argv[1];
+	char* command = (char*) argv[2];
 
 	// dictionary file name, fancy names aren't supported
-	char* filename = (char*) argv[2];
+	char* filename = (char*) argv[1];
 
-	// UTF8 version of the search string
-	uint8_t* searchUTF8 = (uint8_t*) argv[2];
-
-	// Length of UTF8 version of the search string
-	int searchUTF8Len = 0;
-	while (searchUTF8[searchUTF8Len] != 0) {
-		searchUTF8Len++;
-	}
-
-	// Need to convert UTF8 to UTF16 (to simplify lookup procedure)
-	// multi char symbols are ignored
-	uint16_t* searchUTF16 = (uint16_t*) malloc((searchUTF8Len + 1)*2);
-	uint8_t* searchUTF8End = searchUTF8;
-	uint16_t* searchUTF16End = searchUTF16;
-	ConversionResult res = ConvertUTF8toUTF16((const UTF8**) &searchUTF8End, (const UTF8*) (searchUTF8 + searchUTF8Len), 
-			(UTF16**) &searchUTF16End, (UTF16*) (searchUTF16 + searchUTF8Len*2), lenientConversion);
-	if (res != conversionOK) {
-		printf("Failed to convert input to UTF8");
-		return ERR_INTERNAL_ERROR;
-	}
-
-	// Size of UTF16 version of the search string (in two byte characters)
-	int search_len = (int) (searchUTF16End - searchUTF16);
-	// Set trailing zero
-	searchUTF16[search_len] = 0;
+	// UTF 16 version of the search string (assuming input is UTF8)
+	int search_len;
+	uint16_t* searchUTF16 = utf8to16((uint8_t*) argv[3], search_len);
 	
 	// Open dictionary file
 	f = fopen(filename, "rb");
@@ -380,7 +535,6 @@ int main(int argc, char* argv[])
 	}
 
 	// Read header
-	Header header;
 	doread(&header, sizeof(header));
 
 	// check magic (PRSPDICT ascii)
@@ -398,77 +552,33 @@ int main(int argc, char* argv[])
 		return ERR_UNSUPPORTED_VERSION;
 	}
 
-	// New method of finding exact or nearest match
-	bool foundMatch = false;
-	int searchResult = find_exact_match(header.offset, searchUTF16, search_len);
-	if (searchResult != NULL) {
-		doseek(searchResult);
-		Node node;
-		read_node(node);
-
-		if (node.valueArticle != 0) {
-			foundMatch = true;
-			printf("Found exact match, disk accessed %d times, offset is %d\n", n_disk_accesses, node.valueArticle);
-			doseek(node.valueArticle);
-			uint8_t article_len[4];
-			doread(&article_len, sizeof(article_len));
-			int len = article_len[0] + 256*article_len[1] + 256*256*article_len[2] + 256*256*256*article_len[3];
-			printf("Article size: %d\n", len);
-			uint8_t* buf = (uint8_t*) malloc(len + 1);
-			doread(buf, len);
-			buf[len] = 0;
-			printf("Article is:\n%s", buf);
-			free(buf);
-		}
-	}
-	
-	if (!foundMatch) {
-		// No direct match, looking for best match
-		Node& node = find_best_match(header.offset, searchUTF16, search_len);
-
-		// Reading word list with short translations
-		// <word>\0<translation>\0
-		//
-		uint32_t currentPos = node.valueWordList;
-		doseek(currentPos);
-		int printedWords = 0;
-		// where we have seen zero last time
-		// not really eof, but end of word list.
-		// word list ends where radix starts
-		bool eofReached = false;
-		uint8_t buf[WORD_LIST_BUF_LEN];
-		do {
-			// header.offset is where word list ends and radix begins
-			// find max length we can read from word list block
-			uint32_t len = currentPos + WORD_LIST_BUF_LEN < header.offset ? WORD_LIST_BUF_LEN : header.offset - currentPos;
-			doread(buf, len);
-			int lastZero = -1;
-			for (uint32_t i = 0; i < len && printedWords < WORD_LIST_MAX*2; i++) {
-				if (buf[i] == 0) {
-					buf[i] = printedWords % 2 == 0 ? '\t' : '\n';
-					lastZero = i;
-					printedWords++;
-				}
+	switch (command[0]) {
+		case 'e':
+			//	e <word> - find exact match, if nothing found, dump list
+			if (!find_exact_match(header.offset_radix, searchUTF16, search_len)) {
+				find_best_match(searchUTF16, search_len);
 			}
-
-			if (lastZero < 1) {
-				// couldn't find any more matches, exit loop
-				break;
-			}
-
-			// Ok, read the buffer, let's print what we've read
-			// put zero on the last seen zero position
-			buf[lastZero] = 0;
-			printf((char*) &buf);
-
-			// adjust current position
-			currentPos += lastZero + 1;
-		} while (printedWords < WORD_LIST_MAX*2 && currentPos < header.offset);
-
-		// TODO output current position to be able to scroll further / back
-		// TODO what about the case when no direct match can be found, even for the word from the list?
-		// shouldn't word list also contain pointers to particular word translation?
+			break;
+		//	l <word> - dump list
+		case 'l':
+			find_best_match(searchUTF16, search_len);
+			break;
+		//  n <offset> - dump next word list starting from <offset>
+		case 'n':
+			dump_word_list(atoi(argv[3]), NEXT);
+			break;
+		//  p <offset> - dump previous word list, ending at offset <offset>
+		case 'p':
+			dump_word_list(atoi(argv[3]), PREV);
+			break;
+		//  x <offset> - dump article at address x
+		case 'x':
+			dump_article(atoi(argv[3]));
+			break;
+		default:
+			print_usage();
 	}
+
 	
 	fclose(f);
 	return 0;

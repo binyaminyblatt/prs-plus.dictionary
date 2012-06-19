@@ -136,6 +136,8 @@ public class Main {
 		
 		// index offset
 		int radixOffset = articlesLen + wordListLen + HEADER_SIZE;
+		int wordListOffset = articlesLen + HEADER_SIZE;
+		IOUtils.writeInt(outputFile, wordListOffset);
 		IOUtils.writeInt(outputFile, radixOffset);
 		
 		// rewind past header + articles
