@@ -273,7 +273,7 @@ int do_find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
 		// recursive call, if something is found, return, if not, we still can have a chance with the next match
 		if (matched_count > 0) {
 			int result = do_find_exact_match(matched_offset, search_str + matched_count, str_len - matched_count);
-			if (result != NULL) {
+			if (result != 0) {
 				return result;
 			} else {
 				find_result = -1;
@@ -365,7 +365,7 @@ bool find_exact_match (uint32_t offset, uint16_t* search_str, int str_len) {
 	bool result = false;
 	
 	int searchResult = do_find_exact_match(offset, search_str, str_len);
-	if (searchResult != NULL) {
+	if (searchResult != 0) {
 		doseek(searchResult);
 		Node node;
 		read_node(node);

@@ -1,4 +1,4 @@
-﻿#include "desaturate.h"
+#include "desaturate.h"
 
 /** 
 * Converts character to lower case, removing accents
