@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ====================================================================== 
+     16.09.2012 13:50:40                                                        
+
+     PRS+ Dictionary build script    
+     ====================================================================== -->
+<project name="PRS+ Dictionary" default="default">
+    <description>
+    	PRS+ Dictionary build script, build executable jar
+    </description>
+
+	<!-- Load properties file -->
+	<property file="src/main.properties" prefix="main"/>
+	
+    <!-- ================================= 
+          target: default              
+         ================================= -->
+    <target name="default">
+		<delete dir="tmp"/>
+    	<mkdir dir="tmp/bin"/>
+    	
+    	<echo>Compiling classes...</echo>
+    	<javac srcdir="src" destdir="tmp/bin" includeantruntime="false" target="1.5" source="1.5" debug="true" nowarn="true">
+    		<classpath>
+    				<fileset dir="lib">
+    					<include name="*.jar"/>
+    				</fileset>
+    		</classpath>
+    	</javac>
+    	
+    	<echo>Copying resources...</echo>
+    	<copy todir="tmp/bin">
+    		<fileset dir="src">
+    			<exclude name="**/*.java"/>
+    		</fileset>
+    	</copy>
+    	
+    	<echo>Creating final jar file...</echo>
+    	<jar jarfile="tmp/external-libs.jar">
+			<zipgroupfileset dir="lib/">
+				<include name="**/*.jar"/>
+				<exclude name="**/*-javadoc.jar"/>
+				<exclude name="**/*-sources.jar"/>
+			</zipgroupfileset>
+    	</jar>
+		<jar destfile="xdxfToPrsp.jar">
+			<manifest>
+			  <attribute name="Main-Class" value="org.kartu.dict.Main" />
+			</manifest>			
+			
+			<zipfileset src="tmp/external-libs.jar">
+				<exclude name="META-INF/**/*"/>
+			</zipfileset>
+			<fileset dir="tmp/bin"/>
+    	</jar>
+    	
+    	
+    	<echo>Creating distribution zip</echo>
+    	<zip destfile="xdxfToPrsp_${main.version}.zip">
+    		<fileset file="xdxfToPrsp.jar"/>
+    		<fileset file="readme.txt"/>
+    	</zip>
+    	
+    	<echo>Removing temporary files...</echo>
+    	<delete dir="tmp"/>
+    </target>
+
+</project>

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.Charset;
+import java.util.Properties;
 
 import org.apache.log4j.Logger;
 import org.kartu.IOUtils;
@@ -151,14 +152,18 @@ public class Main {
 		assert(outputFile.getFilePointer() == radixOffset);
 		
 		// Write index
-		log.info("Writing indices");
+		log.info("Writing indices (this might take a while)");
 		RadixSerializer.getInstance().persistRadix(KEY_CHARSET, radixOffset, HEADER_SIZE, HEADER_SIZE + articlesLen, tree.root, outputFile);
 		outputFile.close();
 		
 		log.info("OK");
 	}
 
-	private static void printUsage() {
-		System.out.println("Usage:\n\t... <input xdxf file> <output file>");
+	private static void printUsage() throws IOException {
+		Properties props = new Properties();
+		props.load(Main.class.getResourceAsStream("/main.properties"));
+		System.out.println("XDXF to prspdict converter" 
+				+ "\nVersion " + props.getProperty("version", "?.?") 
+				+ "\nUsage:\n\t java -jar <jar file> <input xdxf file> <output file>");
 	}
 }
