@@ -3,6 +3,7 @@ Mics/*
 */bin
 */.metadata
 */Debug
+*/Release
 *.xdxf
 *.prspdict
 *.opensdf

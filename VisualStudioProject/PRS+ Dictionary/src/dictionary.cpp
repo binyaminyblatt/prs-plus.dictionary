@@ -52,6 +52,7 @@
 #include <stdint.h>
 #else
 #include "stdint.h"
+#include <windows.h>
 #endif
 #include "unicode.h"
 #include "desaturate.h"
@@ -184,6 +185,11 @@ void read_node(Node& node) {
 int find_matching_child (Node node, uint16_t* search_str, int str_len, int& matched_count, bool normalize = false, int starting_idx = -1) {
 	uint16_t* pchildren = &(node.children_names[0]);
 	
+	// Skip pchildren to starting idx
+	for (int i = 0; i < starting_idx + 1; i++) {
+		while (*pchildren++ != 0);
+	}
+
 	for (int i = starting_idx + 1, n = node.nchildren; i < n; i++) {
 		// Compare
 		int j;
@@ -209,6 +215,12 @@ int find_matching_child (Node node, uint16_t* search_str, int str_len, int& matc
 				}
 			}
 		}
+
+		// node's string longer than search string?
+		if (str_len == j && pchildren[j] != 0) {
+			mismatch = true;
+		}
+
 		if (mismatch) {
 			// Skip to next 0
 			while (*pchildren++ != 0);
@@ -230,29 +242,45 @@ int find_matching_child (Node node, uint16_t* search_str, int str_len, int& matc
 */
 int find_exact_match_counter = 0;
 int do_find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
+
 	// Safeguard
 	if (find_exact_match_counter++ > MAX_EXACT_MATCH_RECURSIVE_CALLS) {
 		printf("Internal error, find_exact_match was called %d times", find_exact_match_counter);
 		exit(ERR_INTERNAL_ERROR);
-
 	}
 
-	// FIXME add sanity check with max calls counter
+	// find all matches, first exact, then "normalized" (case insensitive)
+	// recursively call itself
+	// Take into account, that there can be only one exact match
+
 	Node node;
 
-	// Find exact match
+	// Read this node
 	doseek(offset);
 	read_node(node);
 
+	// Number of chars matched
 	int matched_count;
+	// Idx of the matching child node
 	int matched_idx = -1;
 
 	// Doing it in a loop since more than one node can match
 	int find_result = find_matching_child(node, search_str, str_len, matched_count, false, matched_idx);
+	int exact_match_idx = matched_idx = find_result;
+
+	bool isExactMatch = true;
 	while (matched_idx < node.nchildren) {
 		// no direct match, looking for normalized comparison
-		if (find_result < 0 || matched_count < 1) {			
+		if (find_result < 0 || matched_count < 1) {
 			find_result = find_matching_child(node, search_str, str_len, matched_count, true, matched_idx);
+			isExactMatch = false;
+
+			if (find_result > -1 && exact_match_idx == find_result) {
+				// already checked this path with exact match
+				matched_count = 0;
+				matched_idx = find_result;
+				continue;
+			}
 		}
 
 		// can't find matching node
@@ -266,8 +294,12 @@ int do_find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
 		int matched_offset = node.pchildren[matched_idx];
 
 		// found full match
-		if (str_len <= matched_count) {
+		if (str_len == matched_count) {
 			return matched_offset;
+		} else if (str_len < matched_count) {
+			// matched string longer than oriignal
+			find_result = -1;
+			continue;
 		}
 		
 		// recursive call, if something is found, return, if not, we still can have a chance with the next match
@@ -277,11 +309,17 @@ int do_find_exact_match(uint32_t offset, uint16_t* search_str, int str_len) {
 				return result;
 			} else {
 				find_result = -1;
-				matched_count = 0;
 			}
 		}
 
 		matched_count = 0;
+
+		// Need to track whether we're looping over exact match (in which case matched_idx needs to be reset)
+		// or are already in case insensitive mode
+		if (isExactMatch) {
+			matched_idx = -1;
+			isExactMatch = false;
+		}
 	}
 
 	// found nothing
@@ -512,6 +550,12 @@ void find_best_match(uint16_t* search_str, int str_len) {
 //			
 int main(int argc, char* argv[])
 {
+	// Set console codepage to UTF8 on windows
+	#ifdef _MSC_VER
+		SetConsoleOutputCP(CP_UTF8);
+	#endif
+
+
 	// Expecting <exec name> <dictionary file> <word>
 	if (argc < 4) {
 		print_usage();
