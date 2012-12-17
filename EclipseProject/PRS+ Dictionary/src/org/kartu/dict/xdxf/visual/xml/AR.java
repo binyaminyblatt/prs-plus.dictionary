@@ -29,7 +29,8 @@ public class AR {
 	static {
 		try {
 			JAXBContext ctx = JAXBContext.newInstance(ABR.class, AR.class, B.class, C.class, CO.class,
-						DTRN.class, EX.class, I.class, K.class, KREF.class, NU.class, TR.class);
+						DEF.class, DTRN.class, EX.class, HEAD.class, I.class, K.class, KREF.class, 
+						NU.class, POS.class, SMALL.class, TR.class);
 			unmarshaller = ctx.createUnmarshaller();
 			unmarshaller.setEventHandler(new ValidationEventHandler() {
 				public boolean handleEvent(ValidationEvent event) {
@@ -60,6 +61,13 @@ public class AR {
 		for (Object o : this.elements) {
 			if (o instanceof K) {
 				result.add(((K)o).value);
+			} else if (o instanceof HEAD) {
+				HEAD head = (HEAD) o;
+				for (Object o2 : head.elements) {
+					if (o2 instanceof K) {
+						result.add(((K) o2).value);
+					}
+				}
 			}
 		}
 		

@@ -7,6 +7,6 @@ import javax.xml.bind.annotation.XmlRootElement;
  * 
  * @author kartu
  */
-@XmlRootElement (name="co")
-public class CO extends TagBase {
+@XmlRootElement (name="pos")
+public class POS extends TagBase {
 }

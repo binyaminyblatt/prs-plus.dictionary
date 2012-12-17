@@ -19,11 +19,13 @@ public class I {
 	@Override
 	public String toString() {
 		StringBuffer result = new StringBuffer();
-		result.append("_");
-		for (Object element : this.elements) {
-			if (element != null) result.append(element);
+		if (this.elements != null) {
+			result.append("_");
+			for (Object element : this.elements) {
+				if (element != null) result.append(element);
+			}
+			result.append("_");
 		}
-		result.append("_");
 		return result.toString();
 	}
 }
