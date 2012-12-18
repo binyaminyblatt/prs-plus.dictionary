@@ -1,0 +1,8 @@
+1.01b
+Added support for xdxf files without <k> tag (first tag is considered to be the keyword).
+Changed output file parameter to optional.
+If output file doesn't have right extension .prspdict is automatically appended.
+
+1.0b
+Added support for bunch of tags.
+Added support for files that have <k> tag wrapped with <head> tag.

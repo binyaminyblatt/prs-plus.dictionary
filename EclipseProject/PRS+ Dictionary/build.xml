@@ -58,7 +58,9 @@
     	<echo>Creating distribution zip</echo>
     	<zip destfile="xdxfToPrsp_${main.version}.zip">
     		<fileset file="xdxfToPrsp.jar"/>
+    		<fileset file="changelog.txt"/>
     		<fileset file="readme.txt"/>
+		<fileset file="PRS+ Dictionary.exe" />
     	</zip>
     	
     	<echo>Removing temporary files...</echo>

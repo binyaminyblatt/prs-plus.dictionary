@@ -12,19 +12,5 @@ import javax.xml.bind.annotation.XmlRootElement;
  * @author kartu
  */
 @XmlRootElement (name="b")
-public class B {
-	@XmlAnyElement (lax=true) @XmlMixed
-	public List<Object> elements;
-	
-	@Override
-	public String toString() {
-		if (this.elements == null) {
-			return null;
-		}
-		StringBuffer sb = new StringBuffer();
-		for (Object o : elements) {
-			if (o != null) sb.append(o);
-		}
-		return "*" + sb.toString() + "*";
-	}
+public class B extends TagBase {
 }

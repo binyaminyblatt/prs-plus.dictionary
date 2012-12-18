@@ -72,7 +72,7 @@ public class XDXFParser implements IDictionaryParser, IDictionaryArticle {
 	@Override
 	public String getKeyword() {
 		List<String> keywords = this.ar.getKeywords();
-		return keywords.size() > 0 ? keywords.get(0) : null;
+		return keywords.size() > 0 ? (keywords.get(0)).trim() : null;
 	}
 
 	@Override

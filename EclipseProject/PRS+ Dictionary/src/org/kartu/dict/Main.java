@@ -55,6 +55,7 @@ import ds.tree.RadixTreeImpl;
  * @author kartu
  */
 public class Main {
+	private static final String PRSPDICT_EXT = ".prspdict";
 	private static final Logger log = Logger.getLogger(Main.class);
 	static final int HEADER_SIZE = 1024;
 	static final Charset KEY_CHARSET = Charset.forName("UTF-16LE");
@@ -62,13 +63,26 @@ public class Main {
 	private static final int SHORT_TRANSLATION_LEN = 80;
 	
 	public static void main(String[] args) throws IOException, DictionaryParserException {
-		if (args.length != 2) {
+		if (args.length < 1 || args.length > 2) {
 			printUsage();
 			System.exit(0);
 		}
 		
 		String inputFileName = args[0];
-		String outputFileName = args[1];
+		String outputFileName;
+		if (args.length >= 2) {
+			outputFileName = args[1];
+		} else {
+			outputFileName = args[0];
+			int idx = outputFileName.indexOf('.');
+			if (idx > -1) {
+				outputFileName = outputFileName.substring(0, idx);
+			}
+		}
+		
+		if (!outputFileName.endsWith(PRSPDICT_EXT)) {
+			outputFileName += PRSPDICT_EXT;
+		}
 
 		// Write header (zeros)
 		RandomAccessFile outputFile = new RandomAccessFile(outputFileName, "rw");
@@ -76,7 +90,7 @@ public class Main {
 		outputFile.seek(HEADER_SIZE);
 		
 		// Temporary file for quick lookup of words with closest match
-		RandomAccessFile wordListFile = new RandomAccessFile(File.createTempFile("prspDictTemp", ".prspdict"), "rw");
+		RandomAccessFile wordListFile = new RandomAccessFile(File.createTempFile("prspDictTemp", PRSPDICT_EXT), "rw");
 
 		// Open input xdxf file
 		IDictionaryParser parser = new XDXFParser();
@@ -164,6 +178,6 @@ public class Main {
 		props.load(Main.class.getResourceAsStream("/main.properties"));
 		System.out.println("XDXF to prspdict converter" 
 				+ "\nVersion " + props.getProperty("version", "?.?") 
-				+ "\nUsage:\n\t java -jar <jar file> <input xdxf file> <output file>");
+				+ "\nUsage:\n\t java -jar <jar file> <input xdxf file> [<output file>]");
 	}
 }

@@ -71,6 +71,11 @@ public class AR {
 			}
 		}
 		
+		if (result.size() < 1 && this.elements.size() > 0) {
+			// couldn't find any <k> tags, using the first tag
+			result.add(this.elements.get(0).toString());
+		}
+		
 		return result;
 	}
 	
