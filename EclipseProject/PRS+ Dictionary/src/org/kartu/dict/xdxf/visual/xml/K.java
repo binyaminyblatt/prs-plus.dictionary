@@ -1,7 +1,6 @@
 package org.kartu.dict.xdxf.visual.xml;
 
 import javax.xml.bind.annotation.XmlRootElement;
-import javax.xml.bind.annotation.XmlValue;
 
 /**
  * Corresponds to "k" tag (keyword) in xdxf visual format
@@ -9,12 +8,10 @@ import javax.xml.bind.annotation.XmlValue;
  * @author kartu
  */
 @XmlRootElement (name="k")
-public class K {
-	@XmlValue
-	public String value;
-	
+public class K extends TagBase {
 	@Override
 	public String toString() {
-		return ">>>" + value + "<<<\n";
+		return ">>>" + super.toString() + "<<<";
 	}
 }
+

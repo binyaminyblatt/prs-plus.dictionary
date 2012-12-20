@@ -56,7 +56,7 @@
     	
     	
     	<echo>Creating distribution zip</echo>
-    	<zip destfile="xdxfToPrsp_${main.version}.zip">
+    	<zip destfile="PrspDictionaryConverter_${main.version}.zip">
     		<fileset file="xdxfToPrsp.jar"/>
     		<fileset file="changelog.txt"/>
     		<fileset file="readme.txt"/>

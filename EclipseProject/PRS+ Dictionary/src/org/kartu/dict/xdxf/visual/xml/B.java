@@ -1,9 +1,5 @@
 package org.kartu.dict.xdxf.visual.xml;
 
-import java.util.List;
-
-import javax.xml.bind.annotation.XmlAnyElement;
-import javax.xml.bind.annotation.XmlMixed;
 import javax.xml.bind.annotation.XmlRootElement;
 
 /**

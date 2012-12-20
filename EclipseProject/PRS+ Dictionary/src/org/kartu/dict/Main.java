@@ -8,6 +8,7 @@ import java.util.Properties;
 
 import org.apache.log4j.Logger;
 import org.kartu.IOUtils;
+import org.kartu.dict.stardict.StardictParser;
 import org.kartu.dict.xdxf.visual.XDXFParser;
 
 import ds.tree.DuplicateKeyException;
@@ -34,7 +35,7 @@ import ds.tree.RadixTreeImpl;
  *   
  *  article:
  *  	length (unit32)
- *  	article (utf8 text)
+ *  	article (utf8 TEXT)
  *  
  *  word list:
  *   	name (UTF8)
@@ -55,8 +56,9 @@ import ds.tree.RadixTreeImpl;
  * @author kartu
  */
 public class Main {
-	private static final String PRSPDICT_EXT = ".prspdict";
+	private static final String EXT_PRSPDICT = ".prspdict";
 	private static final Logger log = Logger.getLogger(Main.class);
+	
 	static final int HEADER_SIZE = 1024;
 	static final Charset KEY_CHARSET = Charset.forName("UTF-16LE");
 	static final Charset ARTICLE_CHARSET = Charset.forName("UTF-8");
@@ -80,8 +82,8 @@ public class Main {
 			}
 		}
 		
-		if (!outputFileName.endsWith(PRSPDICT_EXT)) {
-			outputFileName += PRSPDICT_EXT;
+		if (!outputFileName.endsWith(EXT_PRSPDICT)) {
+			outputFileName += EXT_PRSPDICT;
 		}
 
 		// Write header (zeros)
@@ -90,10 +92,19 @@ public class Main {
 		outputFile.seek(HEADER_SIZE);
 		
 		// Temporary file for quick lookup of words with closest match
-		RandomAccessFile wordListFile = new RandomAccessFile(File.createTempFile("prspDictTemp", PRSPDICT_EXT), "rw");
+		RandomAccessFile wordListFile = new RandomAccessFile(File.createTempFile("prspDictTemp", EXT_PRSPDICT), "rw");
 
-		// Open input xdxf file
-		IDictionaryParser parser = new XDXFParser();
+		// Open input dictionary file
+		IDictionaryParser parser;
+		if (inputFileName.endsWith(EXT_PRSPDICT)) {
+			parser = new XDXFParser();
+		} else if (inputFileName.endsWith(StardictParser.EXTENSION)) {
+			parser = new StardictParser();
+		} else {
+			System.out.println(String.format("Unknown extension, please provide file with either %s (xdxf) or %s (stardict) extension", XDXFParser.EXTENSION, StardictParser.EXTENSION));
+			System.exit(0);
+			return;
+		}
 		parser.open(inputFileName);
 		
 		
@@ -178,6 +189,7 @@ public class Main {
 		props.load(Main.class.getResourceAsStream("/main.properties"));
 		System.out.println("XDXF to prspdict converter" 
 				+ "\nVersion " + props.getProperty("version", "?.?") 
-				+ "\nUsage:\n\t java -jar <jar file> <input xdxf file> [<output file>]");
+				+ "\nUsage:\n\t java -jar <jar file> <input xdxf file> [<output file>]"
+				+ "\nUsage:\n\t java -jar <jar file> <input stardict (ifo) file> [<output file>]");
 	}
 }

@@ -24,6 +24,7 @@ public class XDXFParser implements IDictionaryParser, IDictionaryArticle {
 	private XMLStreamReader xmlStreamReader;
 	private FileInputStream fin;
 	private AR ar;
+	public static final String EXTENSION = ".xdxf";
 	
 	@Override
 	public void open(String path) throws IOException, DictionaryParserException {
