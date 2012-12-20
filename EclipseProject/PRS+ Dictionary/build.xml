@@ -43,7 +43,7 @@
 				<exclude name="**/*-sources.jar"/>
 			</zipgroupfileset>
     	</jar>
-		<jar destfile="xdxfToPrsp.jar">
+		<jar destfile="toPrsp.jar">
 			<manifest>
 			  <attribute name="Main-Class" value="org.kartu.dict.Main" />
 			</manifest>			
@@ -57,7 +57,7 @@
     	
     	<echo>Creating distribution zip</echo>
     	<zip destfile="PrspDictionaryConverter_${main.version}.zip">
-    		<fileset file="xdxfToPrsp.jar"/>
+    		<fileset file="toPrsp.jar"/>
     		<fileset file="changelog.txt"/>
     		<fileset file="readme.txt"/>
 		<fileset file="PRS+ Dictionary.exe" />

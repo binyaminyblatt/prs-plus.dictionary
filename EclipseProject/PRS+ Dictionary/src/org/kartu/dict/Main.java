@@ -96,7 +96,7 @@ public class Main {
 
 		// Open input dictionary file
 		IDictionaryParser parser;
-		if (inputFileName.endsWith(EXT_PRSPDICT)) {
+		if (inputFileName.endsWith(XDXFParser.EXTENSION)) {
 			parser = new XDXFParser();
 		} else if (inputFileName.endsWith(StardictParser.EXTENSION)) {
 			parser = new StardictParser();
