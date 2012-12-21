@@ -1,5 +1,8 @@
+1.03
+Fixed stardict encoding issue.
+
 1.02b
-Added stardict support
+Added stardict support.
 
 1.01b
 Added support for xdxf files without <k> tag (first tag is considered to be the keyword).

@@ -17,6 +17,7 @@ import org.kartu.dict.IDictionaryParser;
 import org.kartu.dict.xdxf.visual.xml.AR;
 
 public class StardictParser implements IDictionaryParser, IDictionaryArticle {
+	private static final String UTF_8 = "UTF-8";
 	static final Logger log = Logger.getLogger(StardictParser.class);
 	public static final String EXTENSION = ".ifo";
 	private Map<String, String> ifoMap;
@@ -112,7 +113,7 @@ public class StardictParser implements IDictionaryParser, IDictionaryArticle {
 	}
 
 	private Map<String, String> parseIFO(String ifoPath) throws IOException {
-		String[] lines = new String(readFile(ifoPath)).split("\n");
+		String[] lines = new String(readFile(ifoPath), "UTF8").split("\n");
 		Map<String, String> result = new HashMap<String, String>(8);
 		for (String line : lines) {
 			if (line.contains("=")) {
@@ -138,7 +139,7 @@ public class StardictParser implements IDictionaryParser, IDictionaryArticle {
 			for (int n = cursor; n < idxData.length; n++) {
 				if (idxData[n] == 0) {
 					try {
-						String keyword = new String(idxData, cursor, n - cursor, "UTF-8");
+						String keyword = new String(idxData, cursor, n - cursor, UTF_8);
 						this.keyword = keyword;
 						// article offset
 						int offset = 256*256*256 * (idxData[n+1] & 0xff) +
@@ -151,7 +152,7 @@ public class StardictParser implements IDictionaryParser, IDictionaryArticle {
 								256 * (idxData[n+7] & 0xff)
 								+ (idxData[n+8] & 0xff);
 
-						this.translation = new String(dictData, offset, len);
+						this.translation = new String(dictData, offset, len, UTF_8);
 						if (articleType == ArticleType.XDXF) {
 							// Convert XDXF
 							this.translation = "<ar>" + this.translation + "</ar>";
