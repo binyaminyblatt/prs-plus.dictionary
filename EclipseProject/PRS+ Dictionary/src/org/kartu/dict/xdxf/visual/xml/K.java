@@ -9,6 +9,10 @@ import javax.xml.bind.annotation.XmlRootElement;
  */
 @XmlRootElement (name="k")
 public class K extends TagBase {
+	public String plainTextToString() {
+		return super.toString();
+	}
+	
 	@Override
 	public String toString() {
 		return ">>>" + super.toString() + "<<<";

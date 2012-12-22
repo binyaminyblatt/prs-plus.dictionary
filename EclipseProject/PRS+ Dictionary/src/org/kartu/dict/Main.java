@@ -114,7 +114,8 @@ public class Main {
 		int wordListLen = 0;
 		long nArticles = 0;
 		while ((article = parser.getNext()) != null) {
-			if (article.getKeyword() == null) {
+			String keyword = article.getKeyword();
+			if (keyword == null) {
 				// ignore articles without keyword
 				continue;
 			}
@@ -128,12 +129,12 @@ public class Main {
 			shortTranslation = shortTranslation.substring(0, shortTranslationLen);
 			shortTranslation = shortTranslation.replaceAll("\\-", " " );
 			shortTranslation = shortTranslation.replaceAll("[\\s]+", " ");
-			shortTranslation = article.getKeyword() + '\0' + shortTranslation+ '\0';
+			shortTranslation = keyword + '\0' + shortTranslation+ '\0';
 			
 			 
 			byte[] shortContent = shortTranslation.getBytes(ARTICLE_CHARSET);
 			try {
-				tree.insert(article.getKeyword(), new int[] {articlesLen, wordListLen});
+				tree.insert(keyword, new int[] {articlesLen, wordListLen});
 				IOUtils.writeInt(outputFile, content.length);
 				outputFile.write(content);
 				wordListFile.write(shortContent);
@@ -142,7 +143,7 @@ public class Main {
 				wordListLen += shortContent.length;
 				nArticles++;
 			} catch (DuplicateKeyException e) {
-				log.warn("Duplicate article: " + article.getKeyword());
+				log.warn("Duplicate article: " + keyword);
 			}
 		}
 		parser.close();

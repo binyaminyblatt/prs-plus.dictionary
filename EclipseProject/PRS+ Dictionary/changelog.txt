@@ -1,4 +1,7 @@
-1.03
+1.04b
+Fixed bug that was adding >>> chars to the indexed keyword.
+
+1.03b
 Fixed stardict encoding issue.
 
 1.02b

@@ -60,7 +60,7 @@ public class AR {
 		ArrayList<String> result = new ArrayList<String>();
 		for (Object o : this.elements) {
 			if (o instanceof K) {
-				result.add(((K)o).toString());
+				result.add(((K)o).plainTextToString());
 			} else if (o instanceof HEAD) {
 				HEAD head = (HEAD) o;
 				for (Object o2 : head.elements) {
