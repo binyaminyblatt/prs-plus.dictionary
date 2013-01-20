@@ -2,7 +2,6 @@ package org.kartu.dict.xdxf.visual;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.List;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -20,10 +19,9 @@ import org.kartu.dict.xdxf.visual.xml.AR;
  * 
  * @see IDictionaryParser
  */
-public class XDXFParser implements IDictionaryParser, IDictionaryArticle {
+public class XDXFParser implements IDictionaryParser {
 	private XMLStreamReader xmlStreamReader;
 	private FileInputStream fin;
-	private AR ar;
 	public static final String EXTENSION = ".xdxf";
 	
 	@Override
@@ -50,8 +48,7 @@ public class XDXFParser implements IDictionaryParser, IDictionaryArticle {
 			    	String tagName = this.xmlStreamReader.getLocalName();
 			    	if ("ar".equals(tagName)) {
 						AR ar = (AR) AR.unmarshaller.unmarshal(this.xmlStreamReader);
-						this.ar = ar;
-						return this;
+						return new XDXFArticle(ar);
 			    	}
 				}
 			}
@@ -69,21 +66,4 @@ public class XDXFParser implements IDictionaryParser, IDictionaryArticle {
 		} catch (Exception ignore) {
 		}
 	}
-
-	@Override
-	public String getKeyword() {
-		List<String> keywords = this.ar.getKeywords();
-		return keywords.size() > 0 ? (keywords.get(0)).trim() : null;
-	}
-
-	@Override
-	public String getTranslation() {
-		return this.ar.getTranslation();
-	}
-
-	@Override
-	public String getShortTranslation() {
-		return this.ar.getShortTranslation();
-	}
-
 }

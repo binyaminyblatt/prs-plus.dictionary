@@ -11,6 +11,10 @@ Mics/*
 *.sdf
 *.suo
 */ipch
-*/xdxfToPrsp.jar
-*/xdxfToPrsp*.zip
+*/toPrsp.jar
+*/toPrsp*.zip
+*/PrspDict*.zip
+*/*.dict.dz
+*/*.ifo
+*/*.idx
 */PRS+ Dictionary.exe

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.Charset;
+import java.util.HashMap;
 import java.util.Properties;
 
 import org.apache.log4j.Logger;
@@ -106,14 +107,36 @@ public class Main {
 			return;
 		}
 		parser.open(inputFileName);
+
+		log.info("Reading articles (might take a while)...");
+		
+		// To solve the problem with duplicate articles, need to read everything into memory first
+		HashMap<String, IDictionaryArticle> articles = new HashMap<String, IDictionaryArticle>(10000);
+		// anonymous block, reading all articles, combining those with clashing keywords
+		{
+			IDictionaryArticle article;
+			while ((article = parser.getNext()) != null) {
+				String keyword = article.getKeyword();
+				IDictionaryArticle existingArticle = articles.get(keyword);
+				
+				if (existingArticle != null) {
+					// Append definition
+					existingArticle.append(article);
+				} else {
+					articles.put(keyword, article);
+				}
+			}
+			
+			parser.close();
+		}
 		
 		
 		RadixTreeImpl<int[]> tree = new RadixTreeImpl<int[]>();
-		IDictionaryArticle article;
 		int articlesLen = 0;
 		int wordListLen = 0;
 		long nArticles = 0;
-		while ((article = parser.getNext()) != null) {
+		
+		for (IDictionaryArticle article : articles.values()) {
 			String keyword = article.getKeyword();
 			if (keyword == null) {
 				// ignore articles without keyword
@@ -143,7 +166,7 @@ public class Main {
 				wordListLen += shortContent.length;
 				nArticles++;
 			} catch (DuplicateKeyException e) {
-				log.warn("Duplicate article: " + keyword);
+				log.warn("Duplicate article: " + keyword + " this should never happen, converter is bugged!");
 			}
 		}
 		parser.close();
@@ -178,7 +201,7 @@ public class Main {
 		assert(outputFile.getFilePointer() == radixOffset);
 		
 		// Write index
-		log.info("Writing indices (this might take a while)");
+		log.info("Writing indices (should take even longer than reading articles)");
 		RadixSerializer.getInstance().persistRadix(KEY_CHARSET, radixOffset, HEADER_SIZE, HEADER_SIZE + articlesLen, tree.root, outputFile);
 		outputFile.close();
 		

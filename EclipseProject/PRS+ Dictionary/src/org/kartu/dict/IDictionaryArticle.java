@@ -9,4 +9,5 @@ public interface IDictionaryArticle {
 	String getKeyword();
 	String getTranslation();
 	String getShortTranslation();
+	void append(IDictionaryArticle article);
 }

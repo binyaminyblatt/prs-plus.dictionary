@@ -16,7 +16,7 @@ import org.kartu.dict.IDictionaryArticle;
 import org.kartu.dict.IDictionaryParser;
 import org.kartu.dict.xdxf.visual.xml.AR;
 
-public class StardictParser implements IDictionaryParser, IDictionaryArticle {
+public class StardictParser implements IDictionaryParser  {
 	private static final String UTF_8 = "UTF-8";
 	static final Logger log = Logger.getLogger(StardictParser.class);
 	public static final String EXTENSION = ".ifo";
@@ -25,8 +25,6 @@ public class StardictParser implements IDictionaryParser, IDictionaryArticle {
 	private byte[] dictData;
 	private byte[] idxData;
 	private int cursor;
-	private String keyword;
-	private String translation;
 
 	enum ArticleType {XDXF, TEXT};
 	
@@ -60,7 +58,7 @@ public class StardictParser implements IDictionaryParser, IDictionaryArticle {
 		String sequenceType = ifoMap.get("sametypesequence");
 		if ("x".equals(sequenceType)) {
 			this.articleType = ArticleType.XDXF;
-		} else if ("t".equals(sequenceType)) {
+		} else if ("t".equals(sequenceType) || "m".equals(sequenceType)) {
 			this.articleType = ArticleType.TEXT;
 		} else {
 			fatal("Unsuported article type:"  + sequenceType);
@@ -135,12 +133,14 @@ public class StardictParser implements IDictionaryParser, IDictionaryArticle {
 
 	@Override
 	public IDictionaryArticle getNext() throws DictionaryParserException {
+		String keyword;
+		String translation = null;
+		
 		if (idxData.length > cursor) {
 			for (int n = cursor; n < idxData.length; n++) {
 				if (idxData[n] == 0) {
 					try {
-						String keyword = new String(idxData, cursor, n - cursor, UTF_8);
-						this.keyword = keyword;
+						keyword = new String(idxData, cursor, n - cursor, UTF_8);
 						// article offset
 						int offset = 256*256*256 * (idxData[n+1] & 0xff) +
 									256*256 * (idxData[n+2] & 0xff) +
@@ -152,18 +152,18 @@ public class StardictParser implements IDictionaryParser, IDictionaryArticle {
 								256 * (idxData[n+7] & 0xff)
 								+ (idxData[n+8] & 0xff);
 
-						this.translation = new String(dictData, offset, len, UTF_8);
+						translation = new String(dictData, offset, len, UTF_8);
 						if (articleType == ArticleType.XDXF) {
 							// Convert XDXF
-							this.translation = "<ar>" + this.translation + "</ar>";
-							this.translation = AR.unmarshaller.unmarshal(
-									new StringReader(this.translation)).toString();
+							translation = "<ar>" + translation + "</ar>";
+							translation = AR.unmarshaller.unmarshal(
+									new StringReader(translation)).toString();
 						}
 						
 						cursor = n + 8 + 1;
-						return this;
+						return new StardictArticle(keyword, translation, translation);
 					} catch (Exception e) {
-						throw new RuntimeException("[" + this.translation + "]", e);
+						throw new RuntimeException("[" + translation + "]", e);
 					}
 				}
 			}
@@ -173,21 +173,6 @@ public class StardictParser implements IDictionaryParser, IDictionaryArticle {
 
 	@Override
 	public void close() {
+		// nothing to close
 	}
-
-	@Override
-	public String getKeyword() {
-		return keyword;
-	}
-
-	@Override
-	public String getTranslation() {
-		return translation;
-	}
-
-	@Override
-	public String getShortTranslation() {
-		return translation;
-	}
-
 }
