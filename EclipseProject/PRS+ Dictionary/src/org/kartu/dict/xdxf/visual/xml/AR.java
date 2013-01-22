@@ -30,7 +30,7 @@ public class AR {
 		try {
 			JAXBContext ctx = JAXBContext.newInstance(ABR.class, AR.class, B.class, C.class, CO.class,
 						DEF.class, DTRN.class, EX.class, HEAD.class, I.class, K.class, KREF.class, 
-						NU.class, OPT.class, POS.class, SMALL.class, TR.class);
+						NU.class, OPT.class, POS.class, SUP.class, SMALL.class, TR.class);
 			unmarshaller = ctx.createUnmarshaller();
 			unmarshaller.setEventHandler(new ValidationEventHandler() {
 				public boolean handleEvent(ValidationEvent event) {

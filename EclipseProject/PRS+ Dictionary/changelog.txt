@@ -1,3 +1,6 @@
+1.06b
+Fixed problem with SUP tag support.
+
 1.05b
 Added support for SUP tags.
 Added support for 'M' type stardict articles.
